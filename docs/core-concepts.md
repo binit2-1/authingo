@@ -100,3 +100,63 @@ Creates a new user account and immediately establishes an active session via an 
   "name": "Binit Gupta"
 }
 ```
+
+**Success Response (200 OK):**
+
+*   **Headers:** ```Set-Cookie: authingo\_session=; Path=/; HttpOnly; Secure; SameSite=Lax```
+    
+*   **Body:** Returns the sanitized ```User``` object (password hash is strictly omitted).
+
+```json
+{
+  "user": {
+    "id": "user_12345",
+    "email": "user@example.com",
+    "name": "Binit Gupta",
+    "emailVerified": false,
+    "createdAt": "2026-03-20T10:00:00Z",
+    "updatedAt": "2026-03-20T10:00:00Z"
+  }
+}
+```
+
+### `POST /sign-in`
+-------------
+
+Authenticates an existing user and issues a new session cookie.
+
+**Request Body (JSON):**
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
+**Success Response (200 OK):** Behaves identically to ```/sign-up```, returning the User object and setting the session cookie.
+
+### `GET /session`
+------------
+
+Retrieves the currently authenticated user based on the authingo\_session cookie sent with the request.
+
+**Success Response (200 OK):**
+
+
+```json
+{
+  "session": {
+    "id": "sess_9876",
+    "userId": "user_12345",
+    "expiresAt": "2026-03-27T10:00:00Z"
+  },
+  "user": {
+    "id": "user_12345",
+    "email": "user@example.com",
+    "name": "Binit Gupta"
+  }
+}
+```
+If no valid cookie is present, returns ```401 Unauthorized.```
+
+
+---
