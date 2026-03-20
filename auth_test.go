@@ -1,28 +1,26 @@
 package authingo
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"context"
 )
-
 
 type mockStore struct{}
 
-
-
-func (m *mockStore) CreateUser(ctx context.Context, user *User) error { return nil }
+func (m *mockStore) CreateUser(ctx context.Context, user *User) error                { return nil }
 func (m *mockStore) GetUserByEmail(ctx context.Context, email string) (*User, error) { return nil, nil }
-func (m *mockStore) CreateSession(ctx context.Context, session *Session) error { return nil }
-func (m *mockStore) GetSession(ctx context.Context, token string) (*Session, *User, error) { return nil, nil, nil }
+func (m *mockStore) CreateSession(ctx context.Context, session *Session) error       { return nil }
+func (m *mockStore) GetSession(ctx context.Context, token string) (*Session, *User, error) {
+	return nil, nil, nil
+}
 func (m *mockStore) DeleteSession(ctx context.Context, token string) error { return nil }
 
-
-// TestNew_RequiresStore ensures that our framework aggressively panics 
+// TestNew_RequiresStore ensures that our framework aggressively panics
 // if a developer forgets to pass a database adapter.
-func TestNew_RequireStore(t *testing.T){
-	defer func(){
+func TestNew_RequireStore(t *testing.T) {
+	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("Expected authingo.New() to panic when Store is nil, but it did not")
 		}
@@ -36,7 +34,7 @@ func TestNew_RequireStore(t *testing.T){
 
 // TestNew_RegistersRoutes verifies that the core routes are correctly mounted
 // to the multiplexer upon initialization.
-func TestNew_RegistersRoutes(t *testing.T){
+func TestNew_RegistersRoutes(t *testing.T) {
 	auth := New(Options{
 		Store: &mockStore{},
 	})
@@ -45,9 +43,7 @@ func TestNew_RegistersRoutes(t *testing.T){
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-up", nil)
 
-
 	rr := httptest.NewRecorder()
-
 
 	handler.ServeHTTP(rr, req)
 

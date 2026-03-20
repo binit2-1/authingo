@@ -5,7 +5,7 @@ import "net/http"
 // Options holds the configuration for initializing AuthInGo.
 type Options struct {
 	// Store is the database adapter (Required).
-	Store   Store
+	Store Store
 
 	// Plugins is an optional list of extensions.
 	Plugins []Plugin
@@ -20,7 +20,6 @@ type Auth struct {
 	plugins []Plugin
 }
 
-
 // New initializes the AuthInGo framework.
 //
 // Example:
@@ -28,24 +27,23 @@ type Auth struct {
 //	auth := authingo.New(authingo.Options{
 //		Store: postgres.NewAdapter(dbConn),
 //	})
-func New(opts Options) *Auth{
+func New(opts Options) *Auth {
 
 	if opts.Store == nil {
 		panic("authingo: Store (database adapter) is strictly required")
 
 	}
-    
 
 	a := &Auth{
-		store: opts.Store,
-		mux: http.NewServeMux(),
+		store:   opts.Store,
+		mux:     http.NewServeMux(),
 		plugins: opts.Plugins,
 	}
 
 	a.registerCoreRoutes()
 
 	// Initialize any provided plugins
-	for _, p := range a.plugins{
+	for _, p := range a.plugins {
 		p.InjectRoutes(a.mux)
 	}
 
@@ -53,9 +51,8 @@ func New(opts Options) *Auth{
 }
 
 func (a *Auth) Handler() http.Handler {
-	return  a.mux
+	return a.mux
 }
-
 
 func (a *Auth) registerCoreRoutes() {
 	a.mux.HandleFunc("POST /sign-up", a.handleSignUp)
@@ -64,8 +61,7 @@ func (a *Auth) registerCoreRoutes() {
 	a.mux.HandleFunc("POST /sign-out", a.handleSignOut)
 }
 
-
-func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {}
-func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {}
+func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request)     {}
+func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request)     {}
 func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {}
-func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request) {}
+func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request)    {}
