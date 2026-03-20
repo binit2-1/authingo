@@ -29,3 +29,24 @@ func main() {
 	
 	http.ListenAndServe(":8080", mux)
 }
+```
+
+# REST API Endpoints
+
+AuthInGo exposes standard JSON REST endpoints. If you are using our `@authingo/react` SDK, you do not need to memorize these—the SDK handles them automatically. However, if you are building a custom client (like a mobile app), here are the core contracts.
+
+## Authentication Routes
+
+All routes are mounted under the prefix you specify in your Go router (e.g., `/api/auth`).
+
+### `POST /sign-up`
+Creates a new user account and immediately establishes an active session via an `HttpOnly` cookie.
+
+**Request Body (JSON):**
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123",
+  "name": "Binit Gupta"
+}
+```
