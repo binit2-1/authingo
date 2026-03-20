@@ -16,6 +16,10 @@ type signUpRequest struct {
 	Name     string `json:"name"`
 }
 
+type signInRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
 // handleSignUp processes new user registrations.
 //
@@ -82,21 +86,87 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name: "authingo_session",
-		Value: token,
-		Path: "/",
-		Expires: expiresAt,
+		Name:     "authingo_session",
+		Value:    token,
+		Path:     "/",
+		Expires:  expiresAt,
 		HttpOnly: true,
-		Secure: true,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
+	json.NewEncoder(w).Encode(map[string]any{"user": user})
+}
+
+func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
+	var req signInRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "Email and password are required fields", http.StatusBadRequest)
+		return
+	}
+
+	user, err := a.store.GetUserByEmail(r.Context(), req.Email)
+	dummyHash := []byte("$2a$10$8wT1XbQ...dummy...hash...")
+
+	if err != nil || user == nil {
+		bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password))
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		http.Error(w, "Internal server error generating session", http.StatusInternalServerError)
+		return
+	}
+	token := hex.EncodeToString(tokenBytes)
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(24 * time.Hour)
+	session := &Session{
+		ID:        generateID("ses_"),
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: expiresAt,
+		CreatedAt: now,
+	}
+
+	err = a.store.CreateSession(r.Context(), session)
+	if err != nil {
+		http.Error(w, "Failed to initialize user session", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "authingo_session",
+		Value:    token,
+		Path:     "/",
+		Expires:  expiresAt,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(map[string]any{"user": user})
+
 }
 
 func generateID(prefix string) string {
