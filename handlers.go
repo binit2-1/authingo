@@ -25,7 +25,7 @@ type signUpRequest struct {
 func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 	var req signUpRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err != nil {
 		http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
 		return
 	}
