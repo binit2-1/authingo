@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/binit2-1/authingo"
-	_"github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
@@ -21,7 +21,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
-	
+
 	_, err = db.Exec(`
 	    TRUNCATE TABLE sessions CASCADE;
 		TRUNCATE TABLE users CASCADE;
