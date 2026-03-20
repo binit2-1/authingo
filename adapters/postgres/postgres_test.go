@@ -8,19 +8,20 @@ import (
 	"time"
 
 	"github.com/binit2-1/authingo"
+	_"github.com/jackc/pgx/v5/stdlib"
 )
 
 func setupTestDB(t *testing.T) *sql.DB {
 	dbURL := os.Getenv("TEST_URL_DB")
 	if dbURL == "" {
-		t.Skip("Skipping Postgres integration test; TEST_DB_URL environment variable is not set")
+		t.Skip("Skipping Postgres integration test; TEST_URL_DB environment variable is not set")
 	}
 
-	db, err := sql.Open("postgres", dbURL)
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
-
+	
 	_, err = db.Exec(`
 	    TRUNCATE TABLE sessions CASCADE;
 		TRUNCATE TABLE users CASCADE;

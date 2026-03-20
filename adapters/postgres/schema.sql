@@ -1,5 +1,5 @@
 -- schema.sql
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(255) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) UNIQUE NOT NULL,
@@ -18,4 +18,4 @@ CREATE TABLE sessions (
 );
 
 -- Index for blazingly fast session lookups
-CREATE INDEX idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
