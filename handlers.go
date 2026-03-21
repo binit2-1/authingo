@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -59,6 +60,7 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 
 	err = a.store.CreateUser(r.Context(), user)
 	if err != nil {
+		log.Printf("DATABASE ERROR: %v\n", err)
 		http.Error(w, "Email is already in use", http.StatusConflict)
 		return
 	}
@@ -197,6 +199,7 @@ func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
 		return
 	}
+	log.Printf("DEBUG: Token=%s, ExpiresAt=%v, Now=%v", session.Token, session.ExpiresAt, time.Now())
 
 	if time.Now().After(session.ExpiresAt) {
 		err := a.store.DeleteSession(r.Context(), cookie.Value)

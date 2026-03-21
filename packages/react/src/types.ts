@@ -1,25 +1,25 @@
-export interface User{
+export interface User {
     id: string;
     email: string;
     name: string;
-    emailVerified: boolean;
-    createdAt: Date;
-    updatedAt: Date;
+    email_verified: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface Session {
     id: string;
-    userId: string;
+    user_id: string;
     token: string;
-    expiresAt: string;
-    createdAt: string;
+    created_at: string;
+    expires_at: string;
 }
 
-export interface AuthResponse{
+export interface AuthResponse {
     user: User;
     session?: Session;
 }
 
-export interface AuthError{
-    message: String;
+export interface AuthError {
+    message: string; 
 }

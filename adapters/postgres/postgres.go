@@ -82,22 +82,22 @@ func (a *Adapter) CreateSession(ctx context.Context, session *authingo.Session) 
 
 // GetSession retrieves a session and its associated user via a SQL JOIN.
 func (a *Adapter) GetSession(ctx context.Context, token string) (*authingo.Session, *authingo.User, error) {
+	session := &authingo.Session{}
+	user := &authingo.User{}
+
 	query := `
-		SELECT s.id, s.user_id, s.token, s.created_at, s.expires_at,
+		SELECT s.id, s.user_id, s.token, s.expires_at, s.created_at, 
 		       u.id, u.email, u.name, u.password_hash, u.email_verified, u.created_at, u.updated_at
 		FROM sessions s
 		JOIN users u ON s.user_id = u.id
 		WHERE s.token = $1
 	`
 
-	var s authingo.Session
-	var u authingo.User
-
 	err := a.db.QueryRowContext(ctx, query, token).Scan(
 		// Session fields
-		&s.ID, &s.UserID, &s.Token, &s.ExpiresAt, &s.CreatedAt,
+		&session.ID, &session.UserID, &session.Token, &session.ExpiresAt, &session.CreatedAt,
 		// User fields
-		&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt,
+		&user.ID, &user.Email, &user.Name, &user.PasswordHash, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {
@@ -107,7 +107,7 @@ func (a *Adapter) GetSession(ctx context.Context, token string) (*authingo.Sessi
 		return nil, nil, err
 	}
 
-	return &s, &u, nil
+	return session, user, nil
 }
 
 // DeleteSession removes a session from the database (used for logout).

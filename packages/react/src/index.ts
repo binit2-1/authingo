@@ -77,7 +77,7 @@ export function createAuthClient(options: AuthClientOptions){
                         method: "GET",
                     })
                     if (res.error){
-                        setError(String(res.error.message));
+                        setError(res.error.message);
                         setData(null);
                     } else {
                         setData(res.data);
