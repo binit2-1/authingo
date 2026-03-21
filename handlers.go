@@ -101,6 +101,12 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"user": user})
 }
 
+// handleSignIn authenticates an existing user and establishes a new session.
+//
+// It expects a JSON payload containing an email and password. To defend against
+// timing attacks (user enumeration), it performs a dummy bcrypt comparison if the
+// user is not found. On success, it generates a 32-byte secure opaque token, saves
+// the session to the database for 7 days, and sets an HttpOnly cookie.
 func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	var req signInRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -220,6 +226,11 @@ func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// handleSignOut terminates the current user's session.
+//
+// It reads the session cookie and deletes the corresponding session record from the
+// database to ensure the token can never be used again. Finally, it forces the client
+// browser to immediately expire and clear the cookie.
 func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("authingo_session")
 	if err != nil || cookie.Value == "" {
