@@ -61,5 +61,5 @@ func (a *Auth) registerCoreRoutes() {
 	a.mux.HandleFunc("POST /sign-out", a.handleSignOut)
 }
 
-func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {}
-func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request)    {}
+
+

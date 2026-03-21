@@ -115,7 +115,7 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := a.store.GetUserByEmail(r.Context(), req.Email)
-	dummyHash := []byte("$2a$10$8wT1XbQ...dummy...hash...")
+	dummyHash := []byte("$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa")
 
 	if err != nil || user == nil {
 		bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password))
@@ -137,7 +137,7 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	token := hex.EncodeToString(tokenBytes)
 
 	now := time.Now().UTC()
-	expiresAt := now.Add(24 * time.Hour)
+	expiresAt := now.Add(7 * 24 * time.Hour)
 	session := &Session{
 		ID:        generateID("ses_"),
 		UserID:    user.ID,
@@ -167,6 +167,85 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]any{"user": user})
 
+}
+
+// handleGetSession validates the client's session cookie.
+//
+// It extracts the "authingo_session" cookie, looks up the corresponding session
+// and user in the database, and verifies the session has not expired. If the
+// session is expired, it automatically cleans it up from the database.
+// Returns the sanitized User and Session objects as JSON.
+func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("authingo_session")
+	if err != nil || cookie.Value == "" {
+		http.Error(w, "Unauthorized: No session cookie", http.StatusUnauthorized)
+		return
+	}
+
+	session, user, err := a.store.GetSession(r.Context(), cookie.Value)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if session == nil || user == nil {
+		http.Error(w, "Unauthorized: Invalid session", http.StatusUnauthorized)
+		return
+	}
+
+	if time.Now().After(session.ExpiresAt) {
+		err := a.store.DeleteSession(r.Context(), cookie.Value)
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "authingo_session",
+			Value:    "",
+			Path:     "/",
+			Expires:  time.Unix(0, 0),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Error(w, "Unauthorized: Session expired", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"user":    user,
+		"session": session,
+	})
+
+}
+
+func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("authingo_session")
+	if err != nil || cookie.Value == "" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	err = a.store.DeleteSession(r.Context(), cookie.Value)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "authingo_session",
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
 func generateID(prefix string) string {
