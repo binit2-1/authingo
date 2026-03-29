@@ -47,6 +47,10 @@ func (m *mockAuthStore) DeleteSession(ctx context.Context, token string) error {
 	return nil
 }
 
+func (m *mockAuthStore) RefreshSession(ctx context.Context, oldToken string) (*Session, *User, error) {
+	return nil, nil, nil
+}
+
 func TestHandleSignUp_Success(t *testing.T) {
 	store := &mockAuthStore{}
 	auth := New(Options{Store: store})
@@ -177,6 +181,7 @@ func TestHandleGetSession_Valid(t *testing.T) {
 		session: &Session{
 			Token:     "valid_token_abc",
 			ExpiresAt: time.Now().Add(1 * time.Hour), // Not expired
+			RefreshExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 		},
 	}
 	auth := New(Options{Store: store})
@@ -198,7 +203,8 @@ func TestHandleGetSession_Expired(t *testing.T) {
 		user: &User{ID: "usr_123"},
 		session: &Session{
 			Token:     "expired_token",
-			ExpiresAt: time.Now().Add(-1 * time.Hour), // Expired 1 hour ago
+			ExpiresAt: time.Now().Add(-2 * time.Hour), // Expired 2 hours ago
+			RefreshExpiresAt: time.Now().Add(-24 * time.Hour), // Refresh also expired
 		},
 	}
 	auth := New(Options{Store: store})

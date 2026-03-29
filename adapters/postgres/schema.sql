@@ -13,9 +13,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_expires_at TIMESTAMPTZ NOT NULL,
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index for blazingly fast session lookups
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+
+--Index for blazingly fast session lookups by refresh token
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);

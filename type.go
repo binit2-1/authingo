@@ -19,11 +19,13 @@ type User struct {
 
 // Session represents an active login instance.
 type Session struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Token     string    `json:"-"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+	ID               string    `json:"id"`
+	UserID           string    `json:"user_id"`
+	Token            string    `json:"-"`
+	RefreshToken     string    `json:"-"`
+	CreatedAt        time.Time `json:"created_at"`
+	ExpiresAt        time.Time `json:"expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
 }
 
 // Store defines the exact database operations required by AuthInGo.
@@ -45,6 +47,9 @@ type Store interface {
 
 	// DeleteSession removes the session (used for logging out).
 	DeleteSession(ctx context.Context, token string) error
+
+	//RefreshSession updates the session's expiration time (used for "remember me" functionality).
+	RefreshSession(ctx context.Context, oldRefreshToken string) (*Session, *User, error)
 }
 
 // Plugin defines an extension that can modify the core AuthInGo behavior.
