@@ -50,6 +50,9 @@ type Store interface {
 
 	//RefreshSession updates the session's expiration time (used for "remember me" functionality).
 	RefreshSession(ctx context.Context, oldRefreshToken string) (*Session, *User, error)
+
+	//CleanupExpiredSessions removes sessions that have passed their expiration time.
+	CleanupExpiredSessions(ctx context.Context) error
 }
 
 // Plugin defines an extension that can modify the core AuthInGo behavior.

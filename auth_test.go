@@ -19,6 +19,10 @@ func (m *mockStore) DeleteSession(ctx context.Context, token string) error { ret
 func (m *mockStore) RefreshSession(ctx context.Context, oldToken string) (*Session, *User, error) {
 	return nil, nil, nil
 }
+func (m *mockStore) CleanupExpiredSessions(ctx context.Context) error { 
+    return nil 
+}
+
 
 // TestNew_RequiresStore ensures that our framework aggressively panics
 // if a developer forgets to pass a database adapter.

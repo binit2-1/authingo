@@ -1,6 +1,11 @@
 package authingo
 
-import "net/http"
+import (
+	"context"
+	"log"
+	"net/http"
+	"time"
+)
 
 // Options holds the configuration for initializing AuthInGo.
 type Options struct {
@@ -40,6 +45,8 @@ func New(opts Options) *Auth {
 		plugins: opts.Plugins,
 	}
 
+	go a.startGarbageCollection()
+
 	a.registerCoreRoutes()
 
 	// Initialize any provided plugins
@@ -48,6 +55,21 @@ func New(opts Options) *Auth {
 	}
 
 	return a
+}
+
+func (a *Auth) startGarbageCollection() {
+	ticker := time.NewTicker(24 * time.Hour)
+	for range ticker.C {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		
+		err := a.store.CleanupExpiredSessions(ctx)
+		if err != nil {
+			log.Printf("authingo GC error: failed to clean expired sessions: %v\n", err)
+		}
+
+		cancel()
+	}
+
 }
 
 func (a *Auth) Handler() http.Handler {

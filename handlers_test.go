@@ -51,6 +51,10 @@ func (m *mockAuthStore) RefreshSession(ctx context.Context, oldToken string) (*S
 	return nil, nil, nil
 }
 
+func (m *mockAuthStore) CleanupExpiredSessions(ctx context.Context) error { 
+    return nil 
+}
+
 func TestHandleSignUp_Success(t *testing.T) {
 	store := &mockAuthStore{}
 	auth := New(Options{Store: store})

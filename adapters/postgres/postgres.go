@@ -157,6 +157,13 @@ func (a *Adapter) DeleteSession(ctx context.Context, token string) error {
 	return err
 }
 
+// CleanupExpiredSessions removes sessions that have passed their expiration time.
+func (a *Adapter) CleanupExpiredSessions(ctx context.Context) error{
+	query := `DELETE FROM sessions WHERE expires_at < NOW() OR refresh_expires_at < NOW()`
+	_, err := a.db.ExecContext(ctx, query)
+	return err
+}
+
 // generateToken creates a secure, URL-safe random string
 func generateToken(length int) string {
 	b := make([]byte, length)
