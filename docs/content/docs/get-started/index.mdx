@@ -1,0 +1,29 @@
+---
+title: Introduction
+description: A lightweight, developer-first authentication framework for Go and React.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# AuthInGo
+
+AuthInGo is designed to give you the security of a massive identity provider, without the bloat. It keeps authentication securely within your own infrastructure using opaque tokens and database-backed sessions.
+
+<Callout title="Why Opaque Tokens?" type="info">
+  Unlike JWTs which expose user data to the browser and are notoriously difficult to invalidate, AuthInGo uses opaque session tokens. This ensures absolute security and allows you to instantly revoke access from the server.
+</Callout>
+
+## Architecture
+
+AuthInGo is split into two perfectly synced pieces:
+
+1. **The Go Core**: A high-performance backend engine that handles session creation, cookie management, and automated refresh-token rotation (15-min access / 30-day refresh).
+2. **The React SDK**: A headless frontend library featuring a global `<AuthProvider>` and seamless server actions to completely eliminate frontend boilerplate.
+
+## Security First
+
+Security isn't an opt-in feature. AuthInGo enforces best practices by default:
+- **HttpOnly Cookies:** JavaScript cannot access your session tokens, neutralizing XSS attacks.
+- **Secure Flag:** Tokens are only transmitted over HTTPS.
+- **SameSite Strict/Lax:** Built-in protection against CSRF (Cross-Site Request Forgery) attacks.
+- **Automated Garbage Collection:** Dead sessions are automatically scrubbed from your database to prevent bloat.

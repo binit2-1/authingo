@@ -1,0 +1,9 @@
+{
+  "title": "Docs",
+  "pages": [
+    "get-started",
+    "concepts",
+    "authentication",
+    "databases"
+  ]
+}
