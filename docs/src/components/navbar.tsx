@@ -5,15 +5,18 @@ import Link from 'next/link';
 import { Manrope } from 'next/font/google';
 import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
 import authingoLogo from '@/assets/logo/authingo-blue.svg';
+import {GithubLogoIcon} from "@phosphor-icons/react"
 
 const manrope = Manrope({ subsets: ['latin'] });
 
 export default function Navbar() {
+    const handleGithubClick = () => {
+        window.open('https://github.com/binit2-1/authingo', '_blank');
+    };
+
 	return (
-		<header
-			className={`${manrope.className} sticky top-0 z-40 w-full border-b border-fd-border bg-fd-background/95 backdrop-blur`}
-		>
-			<div className="mx-auto flex h-16 w-full max-w-336.25 items-center gap-4 px-6">
+		<header className={`${manrope.className} sticky top-0 z-30 w-full bg-fd-background/95 backdrop-blur`}>
+			<div className="mx-auto flex h-16 w-full max-w-236.25 items-center gap-4 border-b border-fd-border px-6">
 				<Link href="/" className="flex items-center gap-2">
 					<Image src={authingoLogo} alt="Authingo" width={132} height={28} priority />
 				</Link>
@@ -29,7 +32,8 @@ export default function Navbar() {
 					</nav>
 				</div>
 
-				<div className="flex items-center justify-end">
+				<div className="flex items-center justify-end gap-4 cursor-pointer">
+                    <GithubLogoIcon size={20} onClick={handleGithubClick}/>
 					<ThemeSwitch />
 				</div>
 			</div>

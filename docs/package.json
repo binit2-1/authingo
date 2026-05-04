@@ -14,12 +14,14 @@
   "dependencies": {
     "@authingo/react": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
+    "ArrowRight": "link:@phosphor-icons/react/dist/icons/ArrowRight",
     "fumadocs-core": "16.8.5",
     "fumadocs-mdx": "14.3.2",
     "fumadocs-ui": "16.8.5",
     "geist": "^1.7.0",
     "lucide-react": "^1.11.0",
     "next": "16.2.4",
+    "raster-react": "^0.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "tailwind-merge": "^3.5.0"
