@@ -1,8 +1,100 @@
 ---
 title: React SDK
-description: The headless authentication client for Next.js.
+description: The headless authentication client for Next.js and React.
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # React SDK
 
-Documentation coming soon.
+The `@authingo/react` package provides a seamless, headless frontend experience. It handles all cookie management, token rotation, and state synchronization automatically.
+
+## The Provider
+
+To use the AuthInGo hooks, you must wrap your application in the `<AuthProvider>`. In Next.js App Router, this should be done in your root layout.
+
+<Callout title="Client Component Required" type="warn">
+  Because the provider manages React state, the wrapper component must include the `"use client"` directive.
+</Callout>
+
+```tsx title="app/providers.tsx"
+"use client";
+
+import { AuthProvider } from "@authingo/react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider endpoint="http://localhost:8080/api/auth">
+      {children}
+    </AuthProvider>
+  );
+}```
+
+Client-Side Hooks
+
+The useAuth hook is your primary interface for interacting with the AuthInGo engine.
+
+
+```tsx
+"use client";
+
+import { useAuth } from "@authingo/react";
+
+export function Login() {
+  const { user, signIn, signOut, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  if (user) {
+    return (
+      <div>
+        <p>Welcome, {user.email}</p>
+        <button onClick={() => signOut()}>Sign Out</button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => signIn.email("test@example.com", "password")}>
+      Sign In
+    </button>
+  );
+}
+```
+---
+
+### Step 3: The Postgres Adapter Documentation
+Open `apps/docs/content/docs/databases/postgres-adapter.mdx` and paste this code. It highlights the custom `CleanupExpiredSessions` garbage collection you built.
+
+```mdx
+---
+title: Postgres Adapter
+description: Securely store users and sessions in PostgreSQL.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Postgres Adapter
+
+The `adapters/postgres` package fully implements the AuthInGo `Store` interface, utilizing the high-performance `pgx` driver.
+
+## Database Schema
+
+Before initializing the adapter, ensure your PostgreSQL database has the following tables to support opaque session tokens and user records.
+
+```sql title="schema.sql"
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    access_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    refresh_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
