@@ -63,7 +63,9 @@ export default function AsciiLock() {
 
       const logoCols = Math.ceil(imgRect.width / CELL_STEP);
       const logoRows = Math.ceil(imgRect.height / CELL_STEP);
-      
+
+      if (logoCols <= 0 || logoRows <= 0) return;
+
       const startCol = Math.floor((imgRect.left - containerRect.left) / CELL_STEP);
       const startRow = Math.floor((imgRect.top - containerRect.top) / CELL_STEP);
 
