@@ -1,6 +1,4 @@
 {
   "title": "Authentication",
-  "pages": [
-    "react-sdk"
-  ]
+  "pages": ["server", "react-sdk"]
 }

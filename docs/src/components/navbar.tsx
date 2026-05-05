@@ -5,51 +5,89 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Manrope } from 'next/font/google';
 import { ThemeSwitch } from 'fumadocs-ui/layouts/shared/slots/theme-switch';
+import { cn } from '@/lib/cn';
 import authingoLogo from '@/assets/logo/authingo-blue.svg';
 import { GithubLogoIcon, List, X } from "@phosphor-icons/react"
 
+export type NavbarProps = {
+    sidebarTrigger?: React.ComponentType<{ className?: string; children?: React.ReactNode }>;
+    layout?: 'home' | 'docs';
+}
+
 const manrope = Manrope({ subsets: ['latin'] });
 
-export default function Navbar() {
+export default function Navbar({ sidebarTrigger: SidebarTrigger, layout = 'home' }: NavbarProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const isDocsLayout = layout === 'docs';
 
     const handleGithubClick = () => {
         window.open('https://github.com/binit2-1/authingo', '_blank');
     };
 
-	return (
-		<header className={`${manrope.className} sticky top-0 z-30 w-full bg-fd-background/95 backdrop-blur`}>
-			<div className="mx-auto flex h-16 w-full max-w-236.25 items-center justify-between border-b border-fd-border px-6">
-				<Link href="/" className="flex items-center gap-2 w-32">
-					<Image src={authingoLogo} alt="Authingo" width={132} height={28} priority />
-				</Link>
+    return (
+        <header className={cn(
+            manrope.className,
+            isDocsLayout 
+                ? 'sticky top-(--fd-docs-row-1) z-30 [grid-area:header] h-16' 
+                : 'sticky top-0 z-30 w-full'
+        )} style={isDocsLayout ? { '--fd-header-height': '4rem', '--fd-docs-row-2': 'calc(var(--fd-docs-row-1) + 4rem)' } as React.CSSProperties : undefined}>
+            {/* Full-width background with blur */}
+            <div className="absolute inset-0 bg-fd-background/95 backdrop-blur" />
+            
+            <div className={cn(
+                "relative mx-auto flex h-16 items-center border-b border-fd-border",
+                isDocsLayout 
+                    ? "max-w-(--fd-layout-width,97rem) px-4 sm:px-6" 
+                    : "max-w-236.25 px-3 xs:px-4 sm:px-6"
+            )}>
+                {isDocsLayout && SidebarTrigger && (
+                    <>
+                        <SidebarTrigger className="mr-2 hidden md:flex" />
+                        <SidebarTrigger className="p-1.5 md:hidden shrink-0">
+                            <List size={18} />
+                        </SidebarTrigger>
+                    </>
+                )}
 
-				<div className="hidden sm:flex flex-1 justify-center">
-					<nav className="flex items-center justify-center gap-6 text-sm font-semibold text-fd-foreground">
-						<Link href="/docs" className="transition hover:text-fd-foreground">
-							Docs
-						</Link>
-						<Link href="/playground" className="transition hover:text-fd-foreground">
-							Playground
-						</Link>
-					</nav>
-				</div>
+                <Link href="/" className="flex items-center gap-1.5 xs:gap-2 shrink-0 ml-1 xs:ml-0">
+                    <Image
+                        src={authingoLogo}
+                        alt="Authingo"
+                        className="w-auto h-20 sm:h-24 md:h-24 lg:h-32"
+                        priority
+                    />
+                </Link>
 
-				<div className="flex items-center justify-end gap-3 sm:gap-4 cursor-pointer w-32">
-                    <GithubLogoIcon size={20} onClick={handleGithubClick} className="hidden sm:block"/>
-					<ThemeSwitch />
-                    <button 
-                        className="sm:hidden text-fd-foreground p-1"
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    >
-                        {isMenuOpen ? <X size={24} /> : <List size={24} />}
-                    </button>
-				</div>
-			</div>
+                {/* Show nav links on all screen sizes - not hidden on mobile */}
+                <div className="flex flex-1 justify-center min-w-0 px-2">
+                    <nav className="flex items-center gap-2 xs:gap-3 sm:gap-4 md:gap-6 text-[11px] sm:text-xs md:text-sm  font-medium text-fd-foreground">
+                        <Link href="/docs" className="transition hover:text-fd-primary whitespace-nowrap">
+                            Docs
+                        </Link>
+                        <Link href="/playground" className="transition hover:text-fd-primary whitespace-nowrap">
+                            Playground
+                        </Link>
+                    </nav>
+                </div>
 
-            {/* Mobile Menu */}
-            {isMenuOpen && (
-                <div className="sm:hidden absolute top-16 left-0 w-full bg-fd-background border-b border-fd-border py-4 px-6 flex flex-col gap-4 shadow-lg">
+                <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0 ml-auto">
+                    <GithubLogoIcon size={16} onClick={handleGithubClick} className="hidden sm:block cursor-pointer shrink-0"/>
+                    <ThemeSwitch />
+                    {/* Only show mobile menu button for home layout */}
+                    {!isDocsLayout && (
+                        <button 
+                            className="sm:hidden text-fd-foreground p-1 shrink-0"
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        >
+                            {isMenuOpen ? <X size={20} /> : <List size={20} />}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Mobile Menu (only for home layout) */}
+            {!isDocsLayout && isMenuOpen && (
+                <div className="relative sm:hidden bg-fd-background border-b border-fd-border py-4 px-3 xs:px-4 flex flex-col gap-4 shadow-lg">
                     <Link 
                         href="/docs" 
                         className="text-base font-semibold text-fd-foreground hover:text-fd-primary transition"
@@ -75,6 +113,6 @@ export default function Navbar() {
                     </div>
                 </div>
             )}
-		</header>
-	);
+        </header>
+    );
 }

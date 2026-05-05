@@ -1,24 +1,47 @@
 ---
-title: Hello World
-description: Your first document
+title: AuthInGo
+description: Secure, cookie-based authentication for Go backends and React frontends.
 ---
-
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
 
-# Welcome to AuthInGo Docs
+# AuthInGo
 
-<Callout title="Get Started Fast" type="info">
-  Start with the <a href="/docs/get-started">Get Started</a> guide to set up AuthInGo in minutes.
+AuthInGo is a lightweight authentication framework for teams that want ownership of their auth stack without rebuilding every session, cookie, and route by hand.
+
+It gives you a Go auth engine, a pluggable storage interface, a PostgreSQL adapter, and a headless React SDK for wiring login state into your UI.
+
+<Callout title="Built around server-owned sessions" type="info">
+  AuthInGo stores sessions in your database and sends opaque tokens through HttpOnly cookies. Your frontend never needs to read, decode, or persist tokens.
 </Callout>
 
-## Main Sections
+<Cards>
+  <Card title="Get started" href="/docs/get-started" description="Install AuthInGo, mount the backend routes, and connect your first React app." />
+  <Card title="Core concepts" href="/docs/concepts" description="Understand users, sessions, cookies, middleware, and the Store interface." />
+  <Card title="Server API" href="/docs/authentication/server" description="Set up the Go engine and protect application routes." />
+  <Card title="React SDK" href="/docs/authentication/react-sdk" description="Use AuthProvider, useAuth, and createAuthClient in React or Next.js." />
+</Cards>
 
-- [Get Started](/docs/get-started)
-- [Concepts](/docs/concepts)
-- [Authentication](/docs/authentication)
-- [Databases](/docs/databases)
+## What AuthInGo provides
 
----
+- Email and password sign up.
+- Email and password sign in.
+- HttpOnly session and refresh cookies.
+- Database-backed opaque sessions.
+- Route protection with `RequireAuth`.
+- A storage adapter contract for your own database layer.
+- A ready-to-use PostgreSQL adapter.
+- A React provider and typed client helpers.
 
-Explore each section for detailed guides, code samples, and best practices.
+## Package map
+
+| Package | Purpose |
+| --- | --- |
+| `github.com/binit2-1/authingo` | Go auth engine, HTTP routes, middleware, types, and Store interface. |
+| `github.com/binit2-1/authingo/adapters/postgres` | PostgreSQL implementation of the Store interface using `database/sql`. |
+| `@authingo/react` | React provider, auth state hook, and email/password auth client. |
+
+## Start here
+
+New projects should begin with [Installation](/docs/get-started/installation), then read [Server API](/docs/authentication/server) and [React SDK](/docs/authentication/react-sdk).

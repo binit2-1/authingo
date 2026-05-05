@@ -1,25 +1,181 @@
 ---
 title: Installation
-description: Get up and running with AuthInGo in under 5 minutes.
+description: Install AuthInGo, prepare PostgreSQL, and wire your first Go and React apps.
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Installation
+
+This guide creates a Go backend mounted at `http://localhost:8080/api/auth` and a React or Next.js frontend that talks to it.
 
 <Steps>
 
 <Step>
 
-### Install the Go Backend
+### Install the Go packages
 
-Install the core engine and the Postgres storage adapter into your Go module.
+Create or open a Go module, then install the core package and the PostgreSQL adapter.
 
 ```bash
-go get github.com/binit2-1/authingo@v0.5.3
-go get github.com/binit2-1/authingo/adapters/postgres@v0.5.3
+go get github.com/binit2-1/authingo
+go get github.com/binit2-1/authingo/adapters/postgres
+go get github.com/jackc/pgx/v5/stdlib
+```
 
+</Step>
+
+<Step>
+
+### Create the database tables
+
+Run the AuthInGo schema in your PostgreSQL database.
+
+```sql title="schema.sql"
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_expires_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
+```
+
+</Step>
+
+<Step>
+
+### Mount the auth handler
+
+Create the AuthInGo engine with a storage adapter, then mount the built-in handler under `/api/auth`.
+
+```go title="main.go"
+package main
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/binit2-1/authingo"
+	"github.com/binit2-1/authingo/adapters/postgres"
+	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+func main() {
+	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	auth := authingo.New(authingo.Options{
+		Store: postgres.NewAdapter(db),
+	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
+
+	log.Println("listening on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", mux))
+}
+```
+
+</Step>
+
+<Step>
+
+### Install the React SDK
+
+Install the frontend package in your React or Next.js app.
+
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
+
+```bash
+npm install @authingo/react
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @authingo/react
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @authingo/react
+```
+
+  </Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+### Wrap your app
+
+Add `AuthProvider` near the root of your app and point `baseURL` at your mounted Go auth routes.
+
+```tsx title="app/providers.tsx"
+"use client";
+
+import { AuthProvider } from "@authingo/react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider baseURL="http://localhost:8080/api/auth">
+      {children}
+    </AuthProvider>
+  );
+}
+```
+
+```tsx title="app/layout.tsx"
+import { Providers } from "./providers";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
 ```
 
 </Step>
 
 </Steps>
+
+<Callout title="Cross-origin frontends" type="warn">
+  If your frontend runs on another origin, configure CORS to allow credentials and the `X-Authingo-Client` header. The React SDK sends cookies with `credentials: "include"`.
+</Callout>
+
+## Next steps
+
+- Read [Server API](/docs/authentication/server) to protect routes.
+- Read [React SDK](/docs/authentication/react-sdk) to build sign in and sign up forms.
+- Read [Postgres Adapter](/docs/databases/postgres-adapter) to understand the schema and adapter behavior.

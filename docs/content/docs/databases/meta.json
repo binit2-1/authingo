@@ -1,6 +1,4 @@
 {
   "title": "Databases",
-  "pages": [
-    "postgres-adapter"
-  ]
+  "pages": ["postgres-adapter"]
 }

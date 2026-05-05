@@ -1,8 +1,119 @@
 ---
 title: Postgres Adapter
-description: Storing sessions and users in PostgreSQL.
+description: Persist AuthInGo users and sessions in PostgreSQL with the built-in adapter.
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 # Postgres Adapter
 
-Documentation coming soon.
+The PostgreSQL adapter implements the AuthInGo `Store` interface using Go's `database/sql` package. It is designed to work with the `pgx` driver.
+
+## Install
+
+```bash
+go get github.com/binit2-1/authingo/adapters/postgres
+go get github.com/jackc/pgx/v5/stdlib
+```
+
+## Usage
+
+```go title="main.go"
+package main
+
+import (
+	"database/sql"
+	"log"
+	"os"
+
+	"github.com/binit2-1/authingo"
+	"github.com/binit2-1/authingo/adapters/postgres"
+	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+func main() {
+	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	auth := authingo.New(authingo.Options{
+		Store: postgres.NewAdapter(db),
+	})
+
+	_ = auth
+}
+```
+
+## Database Schema
+
+Run this schema before you start the application.
+
+```sql title="schema.sql"
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email_verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_expires_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
+```
+
+<Callout title="Schema source" type="info">
+  The same schema lives in `adapters/postgres/schema.sql` in the repository.
+</Callout>
+
+## Adapter behavior
+
+| Method | Behavior |
+| --- | --- |
+| `CreateUser` | Inserts an AuthInGo user record. |
+| `GetUserByEmail` | Finds a user for email/password sign in. |
+| `CreateSession` | Persists a new opaque session token and refresh token. |
+| `GetSession` | Loads a session and joins the associated user by access token. |
+| `DeleteSession` | Deletes a session by access token. |
+| `RefreshSession` | Rotates session values when given a valid refresh token. |
+| `CleanupExpiredSessions` | Deletes sessions whose access or refresh expiration has passed. |
+
+## Cleanup
+
+AuthInGo starts a daily cleanup loop when you call `authingo.New`. The PostgreSQL adapter implements cleanup with:
+
+```sql
+DELETE FROM sessions
+WHERE expires_at < NOW() OR refresh_expires_at < NOW();
+```
+
+You can also call the adapter method yourself from a job if you prefer to own scheduling.
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+if err := adapter.CleanupExpiredSessions(ctx); err != nil {
+	log.Printf("cleanup failed: %v", err)
+}
+```
+
+## Operational notes
+
+- Use connection pooling settings appropriate for your application.
+- Keep `email` unique to prevent duplicate signups.
+- Keep both session indexes in place for fast lookups and refresh-token rotation.
+- Run migrations with your normal migration tool instead of creating tables at request time.

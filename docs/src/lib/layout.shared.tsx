@@ -1,12 +1,18 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import Navbar from '@/components/navbar';
-import { gitConfig } from './shared';
+import { SidebarTrigger } from 'fumadocs-ui/layouts/docs/slots/sidebar';
+
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      component: <Navbar />,
+      component: <Navbar sidebarTrigger={SidebarTrigger} layout="docs" />,
     },
-    githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+    searchToggle: {
+      enabled: true,
+    },
+    themeSwitch: {
+      enabled: false,
+    },
   };
 }

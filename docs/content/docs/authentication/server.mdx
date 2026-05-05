@@ -1,0 +1,138 @@
+---
+title: Server API
+description: Configure the Go auth engine, mount built-in routes, and protect your application handlers.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+# Server API
+
+The Go package is the source of truth for authentication. It owns user creation, password checks, session creation, cookies, and route protection.
+
+## Create an Auth instance
+
+`authingo.New` requires a `Store`. The built-in PostgreSQL adapter is the quickest path.
+
+```go
+db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+if err != nil {
+	log.Fatal(err)
+}
+
+auth := authingo.New(authingo.Options{
+	Store: postgres.NewAdapter(db),
+})
+```
+
+## Mount built-in routes
+
+Mount the handler anywhere in your app. Most examples use `/api/auth`.
+
+```go
+mux := http.NewServeMux()
+mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
+```
+
+This exposes:
+
+| Method | Path | Body | Response |
+| --- | --- | --- | --- |
+| `POST` | `/sign-up` | `{ "email": string, "password": string, "name": string }` | `{ "user": User }` |
+| `POST` | `/sign-in` | `{ "email": string, "password": string }` | `{ "user": User }` |
+| `GET` | `/session` | none | `{ "user": User, "session": Session }` |
+| `POST` | `/sign-out` | none | `{ "success": true }` |
+
+## Protect routes
+
+Wrap private handlers with `RequireAuth`.
+
+```go title="private.go"
+mux.Handle("/api/me", auth.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value(authingo.UserContextKey).(*authingo.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"user": user,
+	})
+})))
+```
+
+Protected requests must include:
+
+```http
+X-Authingo-Client: true
+```
+
+<Callout title="Why the extra header?" type="info">
+  Cookies are sent automatically by browsers. The `X-Authingo-Client` header gives your server a simple additional signal that the request came from code intentionally using AuthInGo.
+</Callout>
+
+## CORS for a separate frontend
+
+If your frontend and backend run on different origins, allow credentials and the AuthInGo header.
+
+```go title="cors.go"
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Authingo-Client")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+```
+
+## Full example
+
+<Steps>
+<Step>
+
+### Connect storage
+
+```go
+db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+</Step>
+<Step>
+
+### Initialize AuthInGo
+
+```go
+auth := authingo.New(authingo.Options{
+	Store: postgres.NewAdapter(db),
+})
+```
+
+</Step>
+<Step>
+
+### Mount public and private routes
+
+```go
+mux := http.NewServeMux()
+mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
+mux.Handle("/api/me", auth.RequireAuth(http.HandlerFunc(meHandler)))
+```
+
+</Step>
+</Steps>
+
+## Session cleanup
+
+`authingo.New` starts a daily cleanup loop and calls `Store.CleanupExpiredSessions` with a short timeout. The PostgreSQL adapter deletes sessions where either `expires_at` or `refresh_expires_at` has passed.

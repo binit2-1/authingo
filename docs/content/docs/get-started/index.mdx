@@ -1,29 +1,63 @@
 ---
 title: Introduction
-description: A lightweight, developer-first authentication framework for Go and React.
+description: Learn what AuthInGo is, how it is structured, and when to use it.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
 
 # AuthInGo
 
-AuthInGo is designed to give you the security of a massive identity provider, without the bloat. It keeps authentication securely within your own infrastructure using opaque tokens and database-backed sessions.
+AuthInGo is a small, server-first authentication framework for Go applications with React or Next.js frontends.
 
-<Callout title="Why Opaque Tokens?" type="info">
-  Unlike JWTs which expose user data to the browser and are notoriously difficult to invalidate, AuthInGo uses opaque session tokens. This ensures absolute security and allows you to instantly revoke access from the server.
+Instead of issuing JWTs to the browser, AuthInGo creates opaque session tokens, stores the session in your database, and sends tokens with HttpOnly cookies. That means the browser can authenticate requests without ever owning readable credentials.
+
+<Callout title="Good fit" type="info">
+  AuthInGo is best when you want authentication inside your own Go service, backed by your own database, with a lightweight React client for UI state.
 </Callout>
 
-## Architecture
+## Architecture at a glance
 
-AuthInGo is split into two perfectly synced pieces:
+AuthInGo has three main pieces:
 
-1. **The Go Core**: A high-performance backend engine that handles session creation, cookie management, and automated refresh-token rotation (15-min access / 30-day refresh).
-2. **The React SDK**: A headless frontend library featuring a global `<AuthProvider>` and seamless server actions to completely eliminate frontend boilerplate.
+| Layer | Package | Responsibility |
+| --- | --- | --- |
+| Server core | `github.com/binit2-1/authingo` | Registers auth routes, creates users, hashes passwords, creates sessions, sets cookies, and protects routes. |
+| Storage | `github.com/binit2-1/authingo/adapters/postgres` | Persists users and sessions in PostgreSQL through the `Store` interface. |
+| Frontend | `@authingo/react` | Provides global auth state, session checks, logout, and email/password client actions. |
 
-## Security First
+## Request flow
 
-Security isn't an opt-in feature. AuthInGo enforces best practices by default:
-- **HttpOnly Cookies:** JavaScript cannot access your session tokens, neutralizing XSS attacks.
-- **Secure Flag:** Tokens are only transmitted over HTTPS.
-- **SameSite Strict/Lax:** Built-in protection against CSRF (Cross-Site Request Forgery) attacks.
-- **Automated Garbage Collection:** Dead sessions are automatically scrubbed from your database to prevent bloat.
+1. Your React app calls `signIn.email()` or `signUp.email()`.
+2. The Go backend validates the request and creates a session.
+3. AuthInGo sets `authingo_session` and `authingo_refresh` as HttpOnly cookies.
+4. Your app calls `/session` through `useAuth().checkSession()`.
+5. Protected backend routes use `RequireAuth` to validate the session cookie before running application code.
+
+## Core routes
+
+Mounting `auth.Handler()` exposes these routes relative to the path where you mount it:
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/sign-up` | Create a user and start a session. |
+| `POST` | `/sign-in` | Authenticate a user and start a session. |
+| `GET` | `/session` | Return the current user and session from cookies. |
+| `POST` | `/sign-out` | Delete the current session and clear cookies. |
+
+## Security defaults
+
+AuthInGo leans on server-side controls:
+
+- Passwords are hashed with bcrypt before storage.
+- Session tokens are random opaque values, not signed user payloads.
+- Cookies are `HttpOnly`, so client-side JavaScript cannot read them.
+- The session cookie uses `SameSite=Lax`.
+- The refresh cookie uses `SameSite=Strict` and is scoped to `/api/auth/refresh`.
+- Protected routes require the `X-Authingo-Client: true` header.
+- Expired sessions can be cleaned up by the storage adapter.
+
+<Cards>
+  <Card title="Install AuthInGo" href="/docs/get-started/installation" description="Create the database tables and mount the Go handler." />
+  <Card title="Understand concepts" href="/docs/concepts" description="Learn the model before customizing your app." />
+</Cards>

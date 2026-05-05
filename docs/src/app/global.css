@@ -8,6 +8,8 @@ html {
 
 :root {
   --fd-nav-height: 64px !important;
+  --color-fd-primary: #0763EE;
+  --color-fd-primary-foreground: #ffffff;
 }
 
 /* Pattern color for vertical scales: light uses neutral-300, dark uses fd-muted */
@@ -24,6 +26,38 @@ html > body[data-scroll-locked] {
   --removed-body-scroll-bar-size: 0px !important;
 }
 
+/* Title font: Geist Pixel for all headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-geist-pixel-square), monospace;
+}
+
+/* Body font: Manrope for all content */
+body, p, span, div, li, a, td, th, input, textarea, select, button {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Override Fumadocs prose styles to use Manrope */
+.prose p,
+.prose li,
+.prose span,
+.prose div,
+.prose a,
+.prose td,
+.prose th {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Prose headings should use Geist Pixel */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: var(--font-geist-pixel-square), monospace;
+}
+
+/* Keep existing utility classes */
 .font-pixel {
   font-family: var(--font-geist-pixel-square), monospace;
 }

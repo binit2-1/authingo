@@ -1,6 +1,6 @@
 ---
 title: React SDK
-description: The headless authentication client for Next.js and React.
+description: Use AuthProvider, useAuth, and createAuthClient in React and Next.js.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -8,15 +8,37 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # React SDK
 
-The `@authingo/react` package provides a seamless, headless frontend experience. It handles all cookie management, token rotation, and state synchronization automatically.
+The `@authingo/react` package is a headless client for AuthInGo. It does not render UI. It gives you a provider for session state and a small client for calling the Go auth routes.
 
-## The Provider
+## Install
 
-To use the AuthInGo hooks, you must wrap your application in the `<AuthProvider>`. In Next.js App Router, this should be done in your root layout.
+<Tabs items={["npm", "pnpm", "yarn"]}>
+  <Tab value="npm">
 
-<Callout title="Client Component Required" type="warn">
-  Because the provider manages React state, the wrapper component must include the `"use client"` directive.
-</Callout>
+```bash
+npm install @authingo/react
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm add @authingo/react
+```
+
+  </Tab>
+  <Tab value="yarn">
+
+```bash
+yarn add @authingo/react
+```
+
+  </Tab>
+</Tabs>
+
+## AuthProvider
+
+Wrap your app with `AuthProvider` and pass the base URL where your Go auth routes are mounted.
 
 ```tsx title="app/providers.tsx"
 "use client";
@@ -25,24 +47,82 @@ import { AuthProvider } from "@authingo/react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider endpoint="http://localhost:8080/api/auth">
+    <AuthProvider baseURL="http://localhost:8080/api/auth">
       {children}
     </AuthProvider>
   );
-}```
+}
+```
 
-Client-Side Hooks
+<Callout title="Client component required" type="warn">
+  `AuthProvider` stores React state and must run in a client component.
+</Callout>
 
-The useAuth hook is your primary interface for interacting with the AuthInGo engine.
+Use it from your Next.js root layout:
 
+```tsx title="app/layout.tsx"
+import { Providers } from "./providers";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+## useAuth
+
+`useAuth` reads the current session state from the nearest provider.
 
 ```tsx
+const { user, isLoading, error, checkSession, logout } = useAuth();
+```
+
+| Value | Type | Description |
+| --- | --- | --- |
+| `user` | `User \| null` | The current authenticated user. |
+| `isLoading` | `boolean` | `true` while the provider checks `/session`. |
+| `error` | `string \| null` | The latest session error. |
+| `checkSession` | `() => Promise<void>` | Re-fetches the current session from the backend. |
+| `logout` | `() => Promise<void>` | Calls `/sign-out` and clears local user state. |
+
+## createAuthClient
+
+Use `createAuthClient` to call sign in, sign up, and sign out routes.
+
+```tsx title="lib/auth-client.ts"
+import { createAuthClient } from "@authingo/react";
+
+export const authClient = createAuthClient({
+  baseURL: "http://localhost:8080/api/auth",
+});
+```
+
+The client exposes:
+
+| Method | Calls | Input |
+| --- | --- | --- |
+| `authClient.signIn.email()` | `POST /sign-in` | `{ email, password }` |
+| `authClient.signUp.email()` | `POST /sign-up` | `{ email, password, name }` |
+| `authClient.signOut()` | `POST /sign-out` | none |
+
+## Sign in form
+
+```tsx title="app/login.tsx"
 "use client";
 
-import { useAuth } from "@authingo/react";
+import { createAuthClient, useAuth } from "@authingo/react";
+
+const authClient = createAuthClient({
+  baseURL: "http://localhost:8080/api/auth",
+});
 
 export function Login() {
-  const { user, signIn, signOut, isLoading } = useAuth();
+  const { user, isLoading, error, checkSession, logout } = useAuth();
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -50,51 +130,84 @@ export function Login() {
     return (
       <div>
         <p>Welcome, {user.email}</p>
-        <button onClick={() => signOut()}>Sign Out</button>
+        <button onClick={() => logout()}>Sign out</button>
       </div>
     );
   }
 
   return (
-    <button onClick={() => signIn.email("test@example.com", "password")}>
-      Sign In
+    <div>
+      {error ? <p>{error}</p> : null}
+      <button
+        onClick={async () => {
+          const result = await authClient.signIn.email({
+            email: "test@example.com",
+            password: "password",
+          });
+
+          if (!result.error) {
+            await checkSession();
+          }
+        }}
+      >
+        Sign in
+      </button>
+    </div>
+  );
+}
+```
+
+## Sign up form
+
+```tsx title="app/sign-up.tsx"
+"use client";
+
+import { createAuthClient, useAuth } from "@authingo/react";
+
+const authClient = createAuthClient({
+  baseURL: "http://localhost:8080/api/auth",
+});
+
+export function SignUp() {
+  const { checkSession } = useAuth();
+
+  return (
+    <button
+      onClick={async () => {
+        const result = await authClient.signUp.email({
+          email: "ada@example.com",
+          password: "correct-horse-battery-staple",
+          name: "Ada Lovelace",
+        });
+
+        if (!result.error) {
+          await checkSession();
+        }
+      }}
+    >
+      Create account
     </button>
   );
 }
 ```
----
 
-### Step 3: The Postgres Adapter Documentation
-Open `apps/docs/content/docs/databases/postgres-adapter.mdx` and paste this code. It highlights the custom `CleanupExpiredSessions` garbage collection you built.
+## Calling protected routes
 
-```mdx
----
-title: Postgres Adapter
-description: Securely store users and sessions in PostgreSQL.
----
+For your own protected endpoints, include credentials and the anti-CSRF header. The lower-level SDK request helper is internal, so use `fetch` directly for app-specific routes.
 
-import { Callout } from 'fumadocs-ui/components/callout';
+```tsx
+const response = await fetch("http://localhost:8080/api/me", {
+  credentials: "include",
+  headers: {
+    "X-Authingo-Client": "true",
+  },
+});
+```
 
-# Postgres Adapter
+## Types
 
-The `adapters/postgres` package fully implements the AuthInGo `Store` interface, utilizing the high-performance `pgx` driver.
+The package exports `User`, `AuthResponse`, and `AuthError`.
 
-## Database Schema
-
-Before initializing the adapter, ensure your PostgreSQL database has the following tables to support opaque session tokens and user records.
-
-```sql title="schema.sql"
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE sessions (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    access_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    refresh_expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+```ts
+import type { AuthError, AuthResponse, User } from "@authingo/react";
+```

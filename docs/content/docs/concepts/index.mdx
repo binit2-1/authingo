@@ -1,0 +1,86 @@
+---
+title: Concepts
+description: The core ideas behind AuthInGo sessions, cookies, storage, and route protection.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Concepts
+
+AuthInGo is built around a simple model: the backend owns authentication state, the database stores sessions, and the browser only carries HttpOnly cookies.
+
+## Users
+
+A user is an account record with an ID, email, name, bcrypt password hash, verification flag, and timestamps.
+
+```ts
+type User = {
+  id: string;
+  email: string;
+  name: string;
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+};
+```
+
+The password hash is stored on the server and is never serialized to the frontend.
+
+## Sessions
+
+A session is a server-side login record. AuthInGo stores both an access token and a refresh token on the session record, then sends token values as HttpOnly cookies.
+
+| Field | Purpose |
+| --- | --- |
+| `token` | Short-lived opaque token used by `/session` and protected routes. |
+| `refresh_token` | Long-lived opaque token stored separately for rotation support. |
+| `expires_at` | Access-token expiration. |
+| `refresh_expires_at` | Refresh-token expiration. |
+
+Because tokens are opaque, they do not contain user data. The server must look them up before a request is authenticated.
+
+## Cookies
+
+AuthInGo sets two cookies after sign in or sign up:
+
+| Cookie | Path | SameSite | Purpose |
+| --- | --- | --- | --- |
+| `authingo_session` | `/` | `Lax` | Authenticates normal app requests. |
+| `authingo_refresh` | `/api/auth/refresh` | `Strict` | Reserved for refresh-token rotation. |
+
+Both cookies are `HttpOnly` and `Secure`.
+
+<Callout title="Local development" type="warn">
+  Secure cookies require HTTPS in browsers. For local HTTP-only development, you may need a local TLS proxy or a development-only cookie configuration once the core exposes that option.
+</Callout>
+
+## Store interface
+
+The Go core talks to persistence through the `Store` interface:
+
+```go
+type Store interface {
+	CreateUser(ctx context.Context, user *User) error
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	CreateSession(ctx context.Context, session *Session) error
+	GetSession(ctx context.Context, token string) (*Session, *User, error)
+	DeleteSession(ctx context.Context, token string) error
+	RefreshSession(ctx context.Context, oldRefreshToken string) (*Session, *User, error)
+	CleanupExpiredSessions(ctx context.Context) error
+}
+```
+
+Use the PostgreSQL adapter if you want the built-in storage implementation. Implement this interface yourself if you want to use another database.
+
+## Protected routes
+
+`RequireAuth` wraps an `http.Handler`. It checks the anti-CSRF header, reads the `authingo_session` cookie, loads the session, and places the authenticated user on the request context.
+
+```go
+mux.Handle("/api/private", auth.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(authingo.UserContextKey).(*authingo.User)
+	w.Write([]byte("hello " + user.Email))
+})))
+```
+
+The React SDK automatically sends `X-Authingo-Client: true` for its own requests. Add the same header when calling protected routes from your app.
