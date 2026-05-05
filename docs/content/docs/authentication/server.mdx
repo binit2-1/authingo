@@ -25,6 +25,23 @@ auth := authingo.New(authingo.Options{
 })
 ```
 
+AuthInGo defaults to secure, host-only cookies: `SameSite=Lax` for the access
+session cookie and `SameSite=Strict` for the refresh cookie. Embedded demos or
+other truly cross-site deployments can override this explicitly:
+
+```go
+secure := true
+
+auth := authingo.New(authingo.Options{
+	Store: postgres.NewAdapter(db),
+	Cookies: authingo.CookieOptions{
+		Secure:          &secure,
+		SessionSameSite: http.SameSiteNoneMode,
+		RefreshSameSite: http.SameSiteNoneMode,
+	},
+})
+```
+
 ## Mount built-in routes
 
 Mount the handler anywhere in your app. Most examples use `/api/auth`.
@@ -41,7 +58,11 @@ This exposes:
 | `POST` | `/sign-up` | `{ "email": string, "password": string, "name": string }` | `{ "user": User }` |
 | `POST` | `/sign-in` | `{ "email": string, "password": string }` | `{ "user": User }` |
 | `GET` | `/session` | none | `{ "user": User, "session": Session }` |
+| `POST` | `/refresh` | none | `{ "user": User }` |
 | `POST` | `/sign-out` | none | `{ "success": true }` |
+
+All built-in `POST` routes require `X-Authingo-Client: true`. The React SDK
+adds this header automatically.
 
 ## Protect routes
 
@@ -135,4 +156,4 @@ mux.Handle("/api/me", auth.RequireAuth(http.HandlerFunc(meHandler)))
 
 ## Session cleanup
 
-`authingo.New` starts a daily cleanup loop and calls `Store.CleanupExpiredSessions` with a short timeout. The PostgreSQL adapter deletes sessions where either `expires_at` or `refresh_expires_at` has passed.
+`authingo.New` starts a daily cleanup loop and calls `Store.CleanupExpiredSessions` with a short timeout. The PostgreSQL adapter deletes expired sessions in bounded batches and session lookups only authenticate rows where both `expires_at` and `refresh_expires_at` are still in the future.

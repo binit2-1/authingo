@@ -24,3 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 
 --Index for blazingly fast session lookups by refresh token
 CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
+
+-- Indexes for bounded cleanup of expired sessions
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires_at ON sessions(refresh_expires_at);

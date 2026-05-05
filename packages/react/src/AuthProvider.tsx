@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { request } from "./fetcher";
 import type { User } from "./types";
@@ -22,6 +22,7 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
+const AUTHINGO_CHANNEL = "authingo";
 
 export interface AuthProviderProps {
   children: ReactNode;
@@ -40,11 +41,22 @@ export function AuthProvider({ children, baseURL = "" }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
+  const clearSessionState = (message?: string) => {
+    setUser(null);
+    setError(message ?? null);
+    setIsLoading(false);
+  };
 
   const checkSession = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     // Fixed: Changed from "/api/auth/session" to "/session" to respect the baseURL
     const { data, error } = await request<{ user: User }>("/session", { baseURL });
+
+    if (requestId !== requestIdRef.current) return;
     
     if (error) {
       setUser(null);
@@ -59,21 +71,40 @@ export function AuthProvider({ children, baseURL = "" }: AuthProviderProps) {
   const logout = async () => {
     // Fixed: Changed from "/api/auth/sign-out" to "/sign-out"
     await request("/sign-out", { method: "POST", baseURL });
-    setUser(null);
+    clearSessionState();
+    channelRef.current?.postMessage({ type: "logout" });
+    window.localStorage.setItem("authingo:logout", String(Date.now()));
   };
 
   useEffect(() => {
     checkSession();
 
     const handleFatalLogout = () => {
-      setUser(null);
-      setError("Session permanently expired. Please log in again.");
+      clearSessionState("Session permanently expired. Please log in again.");
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "authingo:logout") {
+        clearSessionState();
+      }
     };
 
+    if ("BroadcastChannel" in window) {
+      channelRef.current = new BroadcastChannel(AUTHINGO_CHANNEL);
+      channelRef.current.onmessage = (event) => {
+        if (event.data?.type === "logout") {
+          clearSessionState();
+        }
+      };
+    }
+
     window.addEventListener("authingo:logout", handleFatalLogout);
+    window.addEventListener("storage", handleStorage);
 
     return () => {
       window.removeEventListener("authingo:logout", handleFatalLogout);
+      window.removeEventListener("storage", handleStorage);
+      channelRef.current?.close();
+      channelRef.current = null;
     };
   }, [baseURL]);
 

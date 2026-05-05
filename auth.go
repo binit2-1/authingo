@@ -12,6 +12,9 @@ type Options struct {
 	// Store is the database adapter (Required).
 	Store Store
 
+	// Cookies configures AuthInGo's HttpOnly browser cookies.
+	Cookies CookieOptions
+
 	// Plugins is an optional list of extensions.
 	Plugins []Plugin
 }
@@ -21,6 +24,8 @@ type Auth struct {
 	store Store
 
 	mux *http.ServeMux
+
+	cookies CookieOptions
 
 	plugins []Plugin
 }
@@ -42,6 +47,7 @@ func New(opts Options) *Auth {
 	a := &Auth{
 		store:   opts.Store,
 		mux:     http.NewServeMux(),
+		cookies: normalizeCookieOptions(opts.Cookies),
 		plugins: opts.Plugins,
 	}
 
@@ -61,7 +67,7 @@ func (a *Auth) startGarbageCollection() {
 	ticker := time.NewTicker(24 * time.Hour)
 	for range ticker.C {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		
+
 		err := a.store.CleanupExpiredSessions(ctx)
 		if err != nil {
 			log.Printf("authingo GC error: failed to clean expired sessions: %v\n", err)
@@ -80,8 +86,20 @@ func (a *Auth) registerCoreRoutes() {
 	a.mux.HandleFunc("POST /sign-up", a.handleSignUp)
 	a.mux.HandleFunc("POST /sign-in", a.handleSignIn)
 	a.mux.HandleFunc("GET /session", a.handleGetSession)
+	a.mux.HandleFunc("POST /refresh", a.handleRefreshSession)
 	a.mux.HandleFunc("POST /sign-out", a.handleSignOut)
 }
 
-
-
+func normalizeCookieOptions(opts CookieOptions) CookieOptions {
+	if opts.Secure == nil {
+		secure := true
+		opts.Secure = &secure
+	}
+	if opts.SessionSameSite == http.SameSiteDefaultMode {
+		opts.SessionSameSite = http.SameSiteLaxMode
+	}
+	if opts.RefreshSameSite == http.SameSiteDefaultMode {
+		opts.RefreshSameSite = http.SameSiteStrictMode
+	}
+	return opts
+}

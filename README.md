@@ -6,8 +6,8 @@ A lightweight, developer-first authentication library for Go and React. Build se
 - **Go Core**: Opaque token session management for high security.
 - **Refresh Token Rotation**: Built-in silent refreshing (15-min access / 30-day refresh) to prevent session hijacking without interrupting the user.
 - **Postgres Adapter**: Isolated, built-in support for scalable data storage.
-- **React SDK**: Global ```<AuthProvider>``` with smart request queueing to prevent "Thundering Herd" API failures.
-- **Security First**: HttpOnly, Secure, and SameSite cookie defaults.
+- **React SDK**: Global ```<AuthProvider>```, ```useAuth()```, and client-scoped ```useSession()``` helpers with cross-tab logout sync.
+- **Security First**: HttpOnly, Secure, configurable SameSite cookies, and anti-CSRF headers on state-changing routes.
 
 ---
 
@@ -17,6 +17,24 @@ A lightweight, developer-first authentication library for Go and React. Build se
 go get github.com/binit2-1/authingo
 go get github.com/binit2-1/authingo/adapters/postgres
 ```
+
+For local adapter testing, start the Postgres adapter database:
+
+```bash
+pnpm db:postgres:up
+```
+
+The adapter compose file lives at `adapters/postgres/docker-compose.yaml` and
+loads `adapters/postgres/schema.sql` on first initialization.
+
+For the demo app, use its separate database:
+
+```bash
+pnpm db:demo:up
+```
+
+The demo compose file lives at `demo/server/docker-compose.yaml`, listens on
+local port `5433`, and also loads the Postgres adapter schema.
 
 
 ```go

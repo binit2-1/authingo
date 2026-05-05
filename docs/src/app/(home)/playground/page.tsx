@@ -8,41 +8,14 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { ArrowRightIcon } from "raster-react";
+import { type PlaygroundIcon, playgrounds } from "@/lib/playgrounds";
 
-const PLAYGROUNDS = [
-  {
-    id: "basic",
-    title: "Basic Authentication",
-    description:
-      "Implement a secure email/password login in under 5 lines of code.",
-    icon: PasswordIcon,
-    href: "/playgrounds/basic",
-  },
-  {
-    id: "revocation",
-    title: "Instant Revocation",
-    description:
-      "The opaque token advantage. Instantly kill database-backed sessions across devices.",
-    icon: ShieldIcon,
-    href: "/playgrounds/revocation",
-  },
-  {
-    id: "custom-ui",
-    title: "Bring Your Own UI",
-    description:
-      "Total frontend freedom. Wire our headless SDK to any custom component.",
-    icon: PaletteIcon,
-    href: "/playgrounds/custom-ui",
-  },
-  {
-    id: "protected-routes",
-    title: "The Vault",
-    description:
-      "Secure specific routes and instantly auto-redirect unauthenticated traffic.",
-    icon: LockKeyIcon,
-    href: "/playgrounds/protected-routes",
-  },
-];
+const playgroundIcons: Record<PlaygroundIcon, typeof PasswordIcon> = {
+  palette: PaletteIcon,
+  password: PasswordIcon,
+  shield: ShieldIcon,
+  vault: LockKeyIcon,
+};
 
 const Page = () => {
   return (
@@ -62,13 +35,13 @@ const Page = () => {
             {/* Listed Examples */}
             <div className="mt-8 px-10 pb-28 sm:pb-20">
               <div className="grid border-t border-l border-fd-border grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] xl:grid-cols-4">
-                {PLAYGROUNDS.map((playground) => {
-                  const Icon = playground.icon;
+                {playgrounds.map((playground) => {
+                  const Icon = playgroundIcons[playground.icon];
 
                   return (
                     <Link
                       key={playground.id}
-                      href={playground.href}
+                      href={`/playground/${playground.id}`}
                       className="group flex aspect-square flex-col justify-between overflow-hidden border-r border-b border-fd-border bg-fd-background p-5 transition-colors hover:bg-fd-muted/20 xl:p-4"
                     >
                       <div>

@@ -3,7 +3,9 @@
   "version": "0.1.3",
   "private": true,
   "scripts": {
+    "predev": "pnpm --dir ../../packages/react build",
     "dev": "next dev",
+    "prebuild": "pnpm --dir ../../packages/react build",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

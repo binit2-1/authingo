@@ -29,6 +29,11 @@ type signInRequest struct {
 // user and session in the database, and automatically sets a secure HttpOnly
 // cookie containing the session token.
 func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
+	if !hasClientHeader(r) {
+		http.Error(w, "Forbidden: Missing Anti-CSRF header", http.StatusForbidden)
+		return
+	}
+
 	var req signUpRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -86,7 +91,7 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 
 	expiresAt := now.Add(15 * time.Minute)
 	refreshExpiresAt := now.Add(30 * 24 * time.Hour)
-	
+
 	session := &Session{
 		ID:               generateID("ses_"),
 		UserID:           user.ID,
@@ -103,25 +108,7 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_session",
-		Value:    token,
-		Path:     "/",
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_refresh",
-		Value:    refreshToken,
-		Path:     "/api/auth/refresh",
-		Expires:  refreshExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	a.setSessionCookies(w, token, refreshToken, expiresAt, refreshExpiresAt)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -136,6 +123,11 @@ func (a *Auth) handleSignUp(w http.ResponseWriter, r *http.Request) {
 // user is not found. On success, it generates a 32-byte secure opaque token, saves
 // the session to the database for 7 days, and sets an HttpOnly cookie.
 func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
+	if !hasClientHeader(r) {
+		http.Error(w, "Forbidden: Missing Anti-CSRF header", http.StatusForbidden)
+		return
+	}
+
 	var req signInRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -197,25 +189,7 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_session",
-		Value:    token,
-		Path:     "/",
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_refresh",
-		Value:    refreshToken,
-		Path:     "/api/auth/refresh",
-		Expires:  refreshExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	a.setSessionCookies(w, token, refreshToken, expiresAt, refreshExpiresAt)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -247,7 +221,7 @@ func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if time.Now().After(session.RefreshExpiresAt){
+	if time.Now().After(session.RefreshExpiresAt) {
 		a.store.DeleteSession(r.Context(), cookie.Value)
 		a.clearCookies(w)
 		http.Error(w, "Unauthorized: Session permanently expired", http.StatusUnauthorized)
@@ -255,15 +229,7 @@ func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "authingo_session",
-			Value:    "",
-			Path:     "/",
-			Expires:  time.Unix(0, 0),
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteLaxMode,
-		})
+		a.clearSessionCookie(w)
 		http.Error(w, "Unauthorized: Session expired", http.StatusUnauthorized)
 		return
 	}
@@ -283,6 +249,11 @@ func (a *Auth) handleGetSession(w http.ResponseWriter, r *http.Request) {
 // database to ensure the token can never be used again. Finally, it forces the client
 // browser to immediately expire and clear the cookie.
 func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request) {
+	if !hasClientHeader(r) {
+		http.Error(w, "Forbidden: Missing Anti-CSRF header", http.StatusForbidden)
+		return
+	}
+
 	a.clearCookies(w)
 	tokenToDelete := ""
 	if cookie, err := r.Cookie("authingo_session"); err == nil && cookie.Value != "" {
@@ -306,6 +277,10 @@ func (a *Auth) handleSignOut(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *Auth) handleRefreshSession(w http.ResponseWriter, r *http.Request) {
+	if !hasClientHeader(r) {
+		http.Error(w, "Forbidden: Missing Anti-CSRF header", http.StatusForbidden)
+		return
+	}
 
 	cookie, err := r.Cookie("authingo_refresh")
 	if err != nil {
@@ -317,28 +292,10 @@ func (a *Auth) handleRefreshSession(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.clearCookies(w)
 		http.Error(w, "Unauthorized: Invalid or expired refresh token", http.StatusUnauthorized)
-		return 
+		return
 	}
-	
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_session",
-		Value:    session.Token,
-		Path:     "/",
-		Expires:  session.ExpiresAt,
-		HttpOnly: true,
-		Secure:   true, 
-		SameSite: http.SameSiteLaxMode,
-	})
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "authingo_refresh",
-		Value:    session.RefreshToken,
-		Path:     "/api/auth/refresh", 
-		Expires:  session.RefreshExpiresAt,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	a.setSessionCookies(w, session.Token, session.RefreshToken, session.ExpiresAt, session.RefreshExpiresAt)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
@@ -353,6 +310,36 @@ func generateID(prefix string) string {
 
 func (a *Auth) clearCookies(w http.ResponseWriter) {
 	past := time.Now().Add(-1 * time.Hour)
-	http.SetCookie(w, &http.Cookie{Name: "authingo_session", Value: "", Path: "/", Expires: past, HttpOnly: true})
-	http.SetCookie(w, &http.Cookie{Name: "authingo_refresh", Value: "", Path: "/api/auth/refresh", Expires: past, HttpOnly: true})
+	a.setCookie(w, "authingo_session", "", "/", past, a.cookies.SessionSameSite, -1)
+	a.setCookie(w, "authingo_refresh", "", "/api/auth/refresh", past, a.cookies.RefreshSameSite, -1)
+}
+
+func (a *Auth) clearSessionCookie(w http.ResponseWriter) {
+	a.setCookie(w, "authingo_session", "", "/", time.Unix(0, 0), a.cookies.SessionSameSite, -1)
+}
+
+func (a *Auth) setSessionCookies(w http.ResponseWriter, token, refreshToken string, expiresAt, refreshExpiresAt time.Time) {
+	a.setCookie(w, "authingo_session", token, "/", expiresAt, a.cookies.SessionSameSite, 0)
+	a.setCookie(w, "authingo_refresh", refreshToken, "/api/auth/refresh", refreshExpiresAt, a.cookies.RefreshSameSite, 0)
+}
+
+func (a *Auth) setCookie(w http.ResponseWriter, name, value, path string, expires time.Time, sameSite http.SameSite, maxAge int) {
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     path,
+		Domain:   a.cookies.Domain,
+		Expires:  expires,
+		HttpOnly: true,
+		Secure:   *a.cookies.Secure,
+		SameSite: sameSite,
+	}
+	if maxAge != 0 {
+		cookie.MaxAge = maxAge
+	}
+	http.SetCookie(w, cookie)
+}
+
+func hasClientHeader(r *http.Request) bool {
+	return r.Header.Get("X-Authingo-Client") == "true"
 }

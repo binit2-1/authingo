@@ -4,7 +4,7 @@ import { useState } from "react";
 import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 
 export default function Home() {
-  const { data, isPending, error } = useSession();
+  const { data, isPending, error, refetch } = useSession();
   
   const [email, setEmail] = useState("test@example.com");
   const [password, setPassword] = useState("password123");
@@ -30,7 +30,6 @@ export default function Home() {
           <button 
             onClick={async () => {
               await signOut();
-              window.location.reload(); // Hard refresh to clear React state
             }}
             className="w-full bg-red-500 text-white font-medium p-3 rounded-lg hover:bg-red-600 transition-colors"
           >
@@ -79,7 +78,7 @@ export default function Home() {
             <button 
               onClick={async () => {
                 const res = await signIn.email({ email, password });
-                if (!res.error) window.location.reload();
+                if (!res.error) await refetch();
                 else alert(res.error.message);
               }}
               className="flex-1 bg-gray-900 text-white font-medium p-3 rounded-lg hover:bg-gray-800 transition-colors"
@@ -90,7 +89,7 @@ export default function Home() {
             <button 
               onClick={async () => {
                 const res = await signUp.email({ email, password, name });
-                if (!res.error) window.location.reload();
+                if (!res.error) await refetch();
                 else alert(res.error.message);
               }}
               className="flex-1 bg-blue-600 text-white font-medium p-3 rounded-lg hover:bg-blue-700 transition-colors"

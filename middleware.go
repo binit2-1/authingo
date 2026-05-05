@@ -3,9 +3,8 @@ package authingo
 import (
 	"context"
 	"net/http"
+	"time"
 )
-
-
 
 type ContextKey string
 
@@ -14,11 +13,11 @@ const (
 )
 
 // RequireAuth is a middleware that protects routes from CSRF and unauthorized access.
-func(a *Auth) RequireAuth(next http.Handler) http.Handler{
+func (a *Auth) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Authingo-Client") != "true" {
+		if !hasClientHeader(r) {
 			http.Error(w, "Forbidden: Missing Anti-CSRF header", http.StatusForbidden)
-			return 
+			return
 		}
 
 		cookie, err := r.Cookie("authingo_session")
@@ -29,15 +28,14 @@ func(a *Auth) RequireAuth(next http.Handler) http.Handler{
 
 		session, user, err := a.store.GetSession(r.Context(), cookie.Value)
 		if err != nil || session == nil {
-			http.SetCookie(w, &http.Cookie{
-				Name: "authingo_session",
-				Value: "",
-				Path: "/",
-				MaxAge: -1,
-				HttpOnly: true,
-			})
+			a.clearSessionCookie(w)
 			http.Error(w, "Unauthorized: Invalid or expired session", http.StatusUnauthorized)
-			return 
+			return
+		}
+		if user == nil || session.ExpiresAt.Before(time.Now()) || session.RefreshExpiresAt.Before(time.Now()) {
+			a.clearSessionCookie(w)
+			http.Error(w, "Unauthorized: Invalid or expired session", http.StatusUnauthorized)
+			return
 		}
 
 		ctx := context.WithValue(r.Context(), UserContextKey, user)

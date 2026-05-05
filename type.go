@@ -55,6 +55,26 @@ type Store interface {
 	CleanupExpiredSessions(ctx context.Context) error
 }
 
+// CookieOptions controls how AuthInGo emits browser cookies.
+//
+// By default, AuthInGo uses Secure HttpOnly cookies, SameSite=Lax for the
+// short-lived session cookie, and SameSite=Strict for the refresh cookie. Public
+// embedded demos may override both SameSite values to SameSite=None.
+type CookieOptions struct {
+	// Domain optionally scopes cookies across subdomains, for example ".example.com".
+	// Leave empty for host-only cookies.
+	Domain string
+
+	// Secure controls the Secure cookie attribute. Nil defaults to true.
+	Secure *bool
+
+	// SessionSameSite controls the short-lived session cookie. Zero defaults to Lax.
+	SessionSameSite http.SameSite
+
+	// RefreshSameSite controls the refresh cookie. Zero defaults to Strict.
+	RefreshSameSite http.SameSite
+}
+
 // Plugin defines an extension that can modify the core AuthInGo behavior.
 type Plugin interface {
 	ID() string

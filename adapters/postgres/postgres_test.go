@@ -14,7 +14,7 @@ import (
 func setupTestDB(t *testing.T) *sql.DB {
 	dbURL := os.Getenv("TEST_URL_DB")
 	if dbURL == "" {
-		t.Skip("Skipping Postgres integration test; TEST_URL_DB environment variable is not set")
+		dbURL = "postgres://authingo:authingo_password@localhost:5432/authingo_postgres_adapter?sslmode=disable"
 	}
 
 	db, err := sql.Open("pgx", dbURL)
@@ -99,11 +99,13 @@ func TestSessionRepository(t *testing.T) {
 	_ = adapter.CreateUser(ctx, user)
 
 	session := &authingo.Session{
-		ID:        "session_123",
-		UserID:    user.ID,
-		Token:     "secure_random_token_xyz",
-		ExpiresAt: time.Now().Add(24 * time.Hour).UTC(),
-		CreatedAt: time.Now().UTC(),
+		ID:               "session_123",
+		UserID:           user.ID,
+		Token:            "secure_random_token_xyz",
+		RefreshToken:     "secure_random_refresh_xyz",
+		ExpiresAt:        time.Now().Add(24 * time.Hour).UTC(),
+		RefreshExpiresAt: time.Now().Add(30 * 24 * time.Hour).UTC(),
+		CreatedAt:        time.Now().UTC(),
 	}
 
 	err := adapter.CreateSession(ctx, session)
@@ -122,13 +124,27 @@ func TestSessionRepository(t *testing.T) {
 		t.Errorf("Expected joined user email to be 'session_test@example.com', got '%s'", fetchedUser.Email)
 	}
 
-	err = adapter.DeleteSession(ctx, "secure_random_token_xyz")
+	refreshedSession, refreshedUser, err := adapter.RefreshSession(ctx, "secure_random_refresh_xyz")
+	if err != nil {
+		t.Fatalf("Failed to refresh session: %v", err)
+	}
+	if refreshedSession.ID != "session_123" {
+		t.Errorf("Expected refresh to preserve session id, got '%s'", refreshedSession.ID)
+	}
+	if refreshedSession.Token == "secure_random_token_xyz" || refreshedSession.RefreshToken == "secure_random_refresh_xyz" {
+		t.Error("Expected refresh to rotate both access and refresh tokens")
+	}
+	if refreshedUser.Email != "session_test@example.com" {
+		t.Errorf("Expected refreshed user email to be 'session_test@example.com', got '%s'", refreshedUser.Email)
+	}
+
+	err = adapter.DeleteSession(ctx, refreshedSession.RefreshToken)
 	if err != nil {
 		t.Fatalf("Failed to delete session: %v", err)
 	}
 
 	// Verify deletion
-	deletedSession, _, _ := adapter.GetSession(ctx, "secure_random_token_xyz")
+	deletedSession, _, _ := adapter.GetSession(ctx, refreshedSession.Token)
 	if deletedSession != nil {
 		t.Error("Expected session to be deleted, but it was still found")
 	}

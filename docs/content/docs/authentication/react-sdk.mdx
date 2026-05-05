@@ -109,6 +109,24 @@ The client exposes:
 | `authClient.signIn.email()` | `POST /sign-in` | `{ email, password }` |
 | `authClient.signUp.email()` | `POST /sign-up` | `{ email, password, name }` |
 | `authClient.signOut()` | `POST /sign-out` | none |
+| `authClient.useSession()` | `GET /session` | none |
+
+`useSession()` is a client-side convenience hook for apps that prefer a
+single client module:
+
+```tsx title="lib/auth-client.ts"
+import { createAuthClient } from "@authingo/react";
+
+export const authClient = createAuthClient({
+  baseURL: "http://localhost:8080/api/auth",
+});
+
+export const { signIn, signUp, signOut, useSession } = authClient;
+```
+
+The hook returns `{ data, isPending, error, refetch }`. The provider and client
+hooks both listen for cross-tab logout messages so another open tab clears its
+local auth state immediately.
 
 ## Sign in form
 

@@ -96,6 +96,8 @@ func (a *Adapter) GetSession(ctx context.Context, token string) (*authingo.Sessi
 		FROM sessions s
 		JOIN users u ON s.user_id = u.id
 		WHERE s.token = $1
+		  AND s.expires_at > NOW()
+		  AND s.refresh_expires_at > NOW()
 	`
 
 	err := a.db.QueryRowContext(ctx, query, token).Scan(
@@ -116,7 +118,7 @@ func (a *Adapter) GetSession(ctx context.Context, token string) (*authingo.Sessi
 }
 
 // RefreshSession updates the session's expiration time (used for "remember me" functionality).
-func (a *Adapter) RefreshSession(ctx context.Context, oldToken string) (*authingo.Session, *authingo.User, error) {
+func (a *Adapter) RefreshSession(ctx context.Context, oldRefreshToken string) (*authingo.Session, *authingo.User, error) {
 	newAccessToken := generateToken(32)
 	newRefreshToken := generateToken(64)
 
@@ -125,20 +127,22 @@ func (a *Adapter) RefreshSession(ctx context.Context, oldToken string) (*authing
 
 	query := `
 		UPDATE sessions 
-		SET id = $1, token = $2, expires_at = $3, refresh_expires_at = $4
-		WHERE token = $5 AND refresh_expires_at > NOW()
-		RETURNING id, user_id, token, refresh_token, expires_at, refresh_expires_at
+		SET token = $1,
+			refresh_token = $2,
+			expires_at = $3,
+			refresh_expires_at = $4
+		WHERE refresh_token = $5
+		  AND refresh_expires_at > NOW()
+		RETURNING id, user_id, token, refresh_token, created_at, expires_at, refresh_expires_at
 	`
-	session:= &authingo.Session{}
+	session := &authingo.Session{}
 
-	err := a.db.QueryRowContext(ctx, query, newAccessToken, newRefreshToken, newAccessExpiry, newRefreshExpiry, oldToken,
-		).Scan(
-			&session.ID, &session.UserID, &session.Token, &session.RefreshToken, &session.ExpiresAt, &session.RefreshExpiresAt,
+	err := a.db.QueryRowContext(ctx, query, newAccessToken, newRefreshToken, newAccessExpiry, newRefreshExpiry, oldRefreshToken).Scan(
+		&session.ID, &session.UserID, &session.Token, &session.RefreshToken, &session.CreatedAt, &session.ExpiresAt, &session.RefreshExpiresAt,
 	)
 	if err != nil {
-		return nil, nil, err 
+		return nil, nil, err
 	}
-
 
 	user := &authingo.User{}
 	userQuery := `SELECT id, email, name FROM users WHERE id = $1`
@@ -152,16 +156,39 @@ func (a *Adapter) RefreshSession(ctx context.Context, oldToken string) (*authing
 
 // DeleteSession removes a session from the database (used for logout).
 func (a *Adapter) DeleteSession(ctx context.Context, token string) error {
-	query := `DELETE FROM sessions WHERE token = $1`
+	query := `DELETE FROM sessions WHERE token = $1 OR refresh_token = $1`
 	_, err := a.db.ExecContext(ctx, query, token)
 	return err
 }
 
 // CleanupExpiredSessions removes sessions that have passed their expiration time.
-func (a *Adapter) CleanupExpiredSessions(ctx context.Context) error{
-	query := `DELETE FROM sessions WHERE expires_at < NOW() OR refresh_expires_at < NOW()`
-	_, err := a.db.ExecContext(ctx, query)
-	return err
+func (a *Adapter) CleanupExpiredSessions(ctx context.Context) error {
+	const batchSize int64 = 1000
+	query := `
+		WITH expired AS (
+			SELECT id
+			FROM sessions
+			WHERE expires_at < NOW() OR refresh_expires_at < NOW()
+			LIMIT $1
+		)
+		DELETE FROM sessions
+		WHERE id IN (SELECT id FROM expired)
+	`
+
+	for {
+		result, err := a.db.ExecContext(ctx, query, batchSize)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rowsAffected < batchSize {
+			return nil
+		}
+	}
 }
 
 // generateToken creates a secure, URL-safe random string

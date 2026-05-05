@@ -10,14 +10,21 @@ export interface User {
 export interface Session {
     id: string;
     user_id: string;
-    token: string;
     created_at: string;
     expires_at: string;
+    refresh_expires_at: string;
 }
 
 export interface AuthResponse {
     user: User;
     session?: Session;
+}
+
+export interface UseSessionResult {
+    data: AuthResponse | null;
+    isPending: boolean;
+    error: string | null;
+    refetch: () => Promise<void>;
 }
 
 export interface AuthError {

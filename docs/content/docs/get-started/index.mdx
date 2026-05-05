@@ -52,9 +52,10 @@ AuthInGo leans on server-side controls:
 - Passwords are hashed with bcrypt before storage.
 - Session tokens are random opaque values, not signed user payloads.
 - Cookies are `HttpOnly`, so client-side JavaScript cannot read them.
-- The session cookie uses `SameSite=Lax`.
-- The refresh cookie uses `SameSite=Strict` and is scoped to `/api/auth/refresh`.
-- Protected routes require the `X-Authingo-Client: true` header.
+- The session cookie defaults to `SameSite=Lax`.
+- The refresh cookie defaults to `SameSite=Strict` and is scoped to `/api/auth/refresh`.
+- Cross-site embedded demos can explicitly opt into `SameSite=None; Secure`.
+- Built-in state-changing routes and protected routes require the `X-Authingo-Client: true` header.
 - Expired sessions can be cleaned up by the storage adapter.
 
 <Cards>

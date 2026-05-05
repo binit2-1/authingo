@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: authingo-postgres-adapter
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-authingo}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-authingo_password}"
+      POSTGRES_DB: "${POSTGRES_DB:-authingo_postgres_adapter}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_adapter_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_adapter_data:

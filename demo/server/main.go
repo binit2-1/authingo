@@ -3,8 +3,12 @@ package main
 import (
 	"database/sql"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/binit2-1/authingo"
 	"github.com/binit2-1/authingo/adapters/postgres"
@@ -12,14 +16,83 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type signupLimiter struct {
+	mu      sync.Mutex
+	clients map[string]*signupWindow
+	limit   int
+	window  time.Duration
+}
+
+type signupWindow struct {
+	count     int
+	resetTime time.Time
+}
+
+func newSignupLimiter(limit int, window time.Duration) *signupLimiter {
+	return &signupLimiter{
+		clients: make(map[string]*signupWindow),
+		limit:   limit,
+		window:  window,
+	}
+}
+
+func (l *signupLimiter) allow(ip string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for key, client := range l.clients {
+		if now.After(client.resetTime.Add(l.window)) {
+			delete(l.clients, key)
+		}
+	}
+
+	client := l.clients[ip]
+	if client == nil || now.After(client.resetTime) {
+		l.clients[ip] = &signupWindow{count: 1, resetTime: now.Add(l.window)}
+		return true
+	}
+
+	if client.count >= l.limit {
+		return false
+	}
+
+	client.count++
+	return true
+}
+
+func clientIP(r *http.Request) string {
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		return strings.TrimSpace(strings.Split(forwarded, ",")[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func rateLimitSignups(limiter *signupLimiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/auth/sign-up" && !limiter.allow(clientIP(r)) {
+			http.Error(w, "Too many demo sign-ups. Please wait before trying again.", http.StatusTooManyRequests)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		origin := r.Header.Get("Origin")
+		if isAllowedOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Vary", "Origin")
+		}
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Authingo-Client")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Authingo-Client") 
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
@@ -30,27 +103,68 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func isAllowedOrigin(origin string) bool {
+	if origin == "" {
+		return false
+	}
+
+	for _, configured := range strings.Split(os.Getenv("AUTHINGO_ALLOWED_ORIGINS"), ",") {
+		if strings.TrimSpace(configured) == origin {
+			return true
+		}
+	}
+
+	return origin == "http://localhost:3000" ||
+		origin == "http://127.0.0.1:3000" ||
+		strings.HasSuffix(origin, ".csb.app") ||
+		strings.HasSuffix(origin, ".codesandbox.io")
+}
+
 func main() {
-	// Connect to your Postgres database
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	
-	db, err := sql.Open("pgx", os.Getenv("TEST_URL_DB"))
+
+	db, err := sql.Open("pgx", demoDatabaseURL())
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
 	auth := authingo.New(authingo.Options{
-		Store: postgres.NewAdapter(db),
+		Store:   postgres.NewAdapter(db),
+		Cookies: demoCookieOptions(),
 	})
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
 
-	handlerWithCORS := corsMiddleware(mux)
+	handlerWithCORS := corsMiddleware(rateLimitSignups(newSignupLimiter(5, time.Minute), mux))
 
 	log.Println("Go Backend running on http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", handlerWithCORS))
+}
+
+func demoCookieOptions() authingo.CookieOptions {
+	secure := false
+	options := authingo.CookieOptions{
+		Secure: &secure,
+	}
+
+	if os.Getenv("AUTHINGO_CROSS_SITE_COOKIES") == "true" {
+		secure = true
+		options.Secure = &secure
+		options.SessionSameSite = http.SameSiteNoneMode
+		options.RefreshSameSite = http.SameSiteNoneMode
+	}
+
+	return options
+}
+
+func demoDatabaseURL() string {
+	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
+		return databaseURL
+	}
+
+	return "postgres://authingo_demo:authingo_demo_password@localhost:5433/authingo_demo?sslmode=disable"
 }

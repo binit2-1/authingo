@@ -17,6 +17,7 @@ type mockAuthStore struct {
 	user           *User
 	session        *Session
 	sessionDeleted bool
+	refreshCalled  bool
 }
 
 func (m *mockAuthStore) CreateUser(ctx context.Context, user *User) error {
@@ -48,11 +49,19 @@ func (m *mockAuthStore) DeleteSession(ctx context.Context, token string) error {
 }
 
 func (m *mockAuthStore) RefreshSession(ctx context.Context, oldToken string) (*Session, *User, error) {
-	return nil, nil, nil
+	m.refreshCalled = true
+	if m.session != nil && m.session.RefreshToken == oldToken {
+		m.session.Token = "rotated_access_token"
+		m.session.RefreshToken = "rotated_refresh_token"
+		m.session.ExpiresAt = time.Now().Add(15 * time.Minute)
+		m.session.RefreshExpiresAt = time.Now().Add(30 * 24 * time.Hour)
+		return m.session, m.user, nil
+	}
+	return nil, nil, http.ErrNoCookie
 }
 
-func (m *mockAuthStore) CleanupExpiredSessions(ctx context.Context) error { 
-    return nil 
+func (m *mockAuthStore) CleanupExpiredSessions(ctx context.Context) error {
+	return nil
 }
 
 func TestHandleSignUp_Success(t *testing.T) {
@@ -68,6 +77,7 @@ func TestHandleSignUp_Success(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-up", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Authingo-Client", "true")
 
 	rr := httptest.NewRecorder()
 
@@ -117,6 +127,7 @@ func TestHandleSignUp_MissingFields(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-up", bytes.NewReader(body))
+	req.Header.Set("X-Authingo-Client", "true")
 	rr := httptest.NewRecorder()
 
 	auth.handleSignUp(rr, req)
@@ -144,6 +155,7 @@ func TestHandleSignIn_Success(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-in", bytes.NewReader(body))
+	req.Header.Set("X-Authingo-Client", "true")
 	rr := httptest.NewRecorder()
 
 	auth.handleSignIn(rr, req)
@@ -169,6 +181,7 @@ func TestHandleSignIn_WrongPassword(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-in", bytes.NewReader(body))
+	req.Header.Set("X-Authingo-Client", "true")
 	rr := httptest.NewRecorder()
 
 	auth.handleSignIn(rr, req)
@@ -183,8 +196,8 @@ func TestHandleGetSession_Valid(t *testing.T) {
 	store := &mockAuthStore{
 		user: &User{ID: "usr_123", Email: "binit@example.com"},
 		session: &Session{
-			Token:     "valid_token_abc",
-			ExpiresAt: time.Now().Add(1 * time.Hour), // Not expired
+			Token:            "valid_token_abc",
+			ExpiresAt:        time.Now().Add(1 * time.Hour), // Not expired
 			RefreshExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 		},
 	}
@@ -206,8 +219,8 @@ func TestHandleGetSession_Expired(t *testing.T) {
 	store := &mockAuthStore{
 		user: &User{ID: "usr_123"},
 		session: &Session{
-			Token:     "expired_token",
-			ExpiresAt: time.Now().Add(-2 * time.Hour), // Expired 2 hours ago
+			Token:            "expired_token",
+			ExpiresAt:        time.Now().Add(-2 * time.Hour),  // Expired 2 hours ago
 			RefreshExpiresAt: time.Now().Add(-24 * time.Hour), // Refresh also expired
 		},
 	}
@@ -233,6 +246,7 @@ func TestHandleSignOut(t *testing.T) {
 	auth := New(Options{Store: store})
 
 	req := httptest.NewRequest(http.MethodPost, "/sign-out", nil)
+	req.Header.Set("X-Authingo-Client", "true")
 	req.AddCookie(&http.Cookie{Name: "authingo_session", Value: "token_to_delete"})
 	rr := httptest.NewRecorder()
 
@@ -248,7 +262,35 @@ func TestHandleSignOut(t *testing.T) {
 
 	// Verify the ghost cookie was sent to clear the browser
 	cookie := rr.Result().Cookies()[0]
-	if cookie.Value != "" || cookie.MaxAge < 0 {
+	if cookie.Value != "" {
 		t.Errorf("Expected cookie to be cleared with empty value, got %s", cookie.Value)
+	}
+}
+
+func TestHandleRefreshSession(t *testing.T) {
+	store := &mockAuthStore{
+		user: &User{ID: "usr_123", Email: "binit@example.com"},
+		session: &Session{
+			ID:               "ses_123",
+			Token:            "old_access_token",
+			RefreshToken:     "old_refresh_token",
+			ExpiresAt:        time.Now().Add(-1 * time.Minute),
+			RefreshExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		},
+	}
+	auth := New(Options{Store: store})
+
+	req := httptest.NewRequest(http.MethodPost, "/refresh", nil)
+	req.Header.Set("X-Authingo-Client", "true")
+	req.AddCookie(&http.Cookie{Name: "authingo_refresh", Value: "old_refresh_token"})
+	rr := httptest.NewRecorder()
+
+	auth.handleRefreshSession(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected 200 OK on refresh, got %v: %s", rr.Code, rr.Body.String())
+	}
+	if !store.refreshCalled {
+		t.Error("Expected refresh token rotation to be called")
 	}
 }

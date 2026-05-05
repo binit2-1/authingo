@@ -7,7 +7,14 @@
     "build": "pnpm --filter @authingo/react build",
     "release": "pnpm build && changeset publish",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:it": "docker exec -it authingo-postgres psql -U postgres-healthcheck -d postgres-healthcheck"
+    "db:postgres:up": "docker compose -f adapters/postgres/docker-compose.yaml up -d",
+    "db:postgres:down": "docker compose -f adapters/postgres/docker-compose.yaml down",
+    "db:postgres:reset": "docker compose -f adapters/postgres/docker-compose.yaml down -v && docker compose -f adapters/postgres/docker-compose.yaml up -d",
+    "db:postgres:it": "docker exec -it authingo-postgres-adapter psql -U authingo -d authingo_postgres_adapter",
+    "db:demo:up": "docker compose -f demo/server/docker-compose.yaml up -d",
+    "db:demo:down": "docker compose -f demo/server/docker-compose.yaml down",
+    "db:demo:reset": "docker compose -f demo/server/docker-compose.yaml down -v && docker compose -f demo/server/docker-compose.yaml up -d",
+    "db:demo:it": "docker exec -it authingo-demo-postgres psql -U authingo_demo -d authingo_demo"
   },
   "keywords": [],
   "author": "",

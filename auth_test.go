@@ -19,10 +19,9 @@ func (m *mockStore) DeleteSession(ctx context.Context, token string) error { ret
 func (m *mockStore) RefreshSession(ctx context.Context, oldToken string) (*Session, *User, error) {
 	return nil, nil, nil
 }
-func (m *mockStore) CleanupExpiredSessions(ctx context.Context) error { 
-    return nil 
+func (m *mockStore) CleanupExpiredSessions(ctx context.Context) error {
+	return nil
 }
-
 
 // TestNew_RequiresStore ensures that our framework aggressively panics
 // if a developer forgets to pass a database adapter.
@@ -56,5 +55,14 @@ func TestNew_RegistersRoutes(t *testing.T) {
 
 	if status := rr.Code; status == http.StatusNotFound {
 		t.Errorf("Handler returned 404 Not Found; expected the /sign-up route to be registered")
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/refresh", nil)
+	rr = httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status == http.StatusNotFound {
+		t.Errorf("Handler returned 404 Not Found; expected the /refresh route to be registered")
 	}
 }

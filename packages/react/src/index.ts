@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { request } from "./fetcher";
-import { type AuthResponse } from "./types";
+import { type AuthResponse, type UseSessionResult } from "./types";
 
 export interface AuthClientOptions {
     /** * The absolute URL pointing to your Go AuthInGo backend routes.
@@ -20,6 +21,64 @@ export function createAuthClient(options: AuthClientOptions) {
     const { baseURL } = options;
 
     return {
+        useSession: (): UseSessionResult => {
+            const [data, setData] = useState<AuthResponse | null>(null);
+            const [isPending, setIsPending] = useState(true);
+            const [error, setError] = useState<string | null>(null);
+            const requestIdRef = useRef(0);
+
+            const refetch = async () => {
+                const requestId = ++requestIdRef.current;
+                setIsPending(true);
+                const result = await request<AuthResponse>("/session", { baseURL });
+
+                if (requestId !== requestIdRef.current) return;
+
+                if (result.error) {
+                    setData(null);
+                    setError(result.error.message);
+                } else {
+                    setData(result.data);
+                    setError(null);
+                }
+                setIsPending(false);
+            };
+
+            useEffect(() => {
+                refetch();
+
+                const handleLogout = () => {
+                    setData(null);
+                    setError(null);
+                    setIsPending(false);
+                };
+                const handleStorage = (event: StorageEvent) => {
+                    if (event.key === "authingo:logout") {
+                        handleLogout();
+                    }
+                };
+                const channel = "BroadcastChannel" in window ? new BroadcastChannel("authingo") : null;
+                if (channel) {
+                    channel.onmessage = (event) => {
+                        if (event.data?.type === "logout") {
+                            handleLogout();
+                        }
+                    };
+                }
+
+                window.addEventListener("authingo:logout", handleLogout);
+                window.addEventListener("storage", handleStorage);
+
+                return () => {
+                    window.removeEventListener("authingo:logout", handleLogout);
+                    window.removeEventListener("storage", handleStorage);
+                    channel?.close();
+                };
+            }, []);
+
+            return { data, isPending, error, refetch };
+        },
+
         /** Core authentication actions for logging in and registering users. */
         signIn: {
             /**
@@ -55,10 +114,20 @@ export function createAuthClient(options: AuthClientOptions) {
          * instructs the browser to clear the session cookie.
          */
         signOut: async () => {
-            return request("/sign-out", {
+            const result = await request("/sign-out", {
                 baseURL,
                 method: "POST",
             });
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("authingo:logout"));
+                window.localStorage.setItem("authingo:logout", String(Date.now()));
+                if ("BroadcastChannel" in window) {
+                    const channel = new BroadcastChannel("authingo");
+                    channel.postMessage({ type: "logout" });
+                    channel.close();
+                }
+            }
+            return result;
         }
     }
 }
@@ -67,4 +136,4 @@ export function createAuthClient(options: AuthClientOptions) {
 export { AuthProvider, useAuth } from "./AuthProvider";
 
 // Export the types so developers can type their own variables
-export type { User, AuthResponse, AuthError } from "./types";
+export type { User, AuthResponse, AuthError, Session, UseSessionResult } from "./types";

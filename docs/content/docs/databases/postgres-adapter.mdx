@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires_at ON sessions(refresh_expires_at);
 ```
 
 <Callout title="Schema source" type="info">
@@ -86,18 +88,24 @@ CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token)
 | `CreateUser` | Inserts an AuthInGo user record. |
 | `GetUserByEmail` | Finds a user for email/password sign in. |
 | `CreateSession` | Persists a new opaque session token and refresh token. |
-| `GetSession` | Loads a session and joins the associated user by access token. |
-| `DeleteSession` | Deletes a session by access token. |
-| `RefreshSession` | Rotates session values when given a valid refresh token. |
-| `CleanupExpiredSessions` | Deletes sessions whose access or refresh expiration has passed. |
+| `GetSession` | Loads an unexpired session and joins the associated user by access token. |
+| `DeleteSession` | Deletes a session by access token or refresh token. |
+| `RefreshSession` | Atomically rotates access and refresh token values when given a valid refresh token. |
+| `CleanupExpiredSessions` | Deletes expired sessions in bounded batches. |
 
 ## Cleanup
 
 AuthInGo starts a daily cleanup loop when you call `authingo.New`. The PostgreSQL adapter implements cleanup with:
 
 ```sql
+WITH expired AS (
+	SELECT id
+	FROM sessions
+	WHERE expires_at < NOW() OR refresh_expires_at < NOW()
+	LIMIT 1000
+)
 DELETE FROM sessions
-WHERE expires_at < NOW() OR refresh_expires_at < NOW();
+WHERE id IN (SELECT id FROM expired);
 ```
 
 You can also call the adapter method yourself from a job if you prefer to own scheduling.
@@ -115,5 +123,5 @@ if err := adapter.CleanupExpiredSessions(ctx); err != nil {
 
 - Use connection pooling settings appropriate for your application.
 - Keep `email` unique to prevent duplicate signups.
-- Keep both session indexes in place for fast lookups and refresh-token rotation.
+- Keep the token and expiration indexes in place for fast lookups, refresh-token rotation, and bounded cleanup.
 - Run migrations with your normal migration tool instead of creating tables at request time.

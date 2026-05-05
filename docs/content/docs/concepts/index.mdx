@@ -51,7 +51,11 @@ AuthInGo sets two cookies after sign in or sign up:
 Both cookies are `HttpOnly` and `Secure`.
 
 <Callout title="Local development" type="warn">
-  Secure cookies require HTTPS in browsers. For local HTTP-only development, you may need a local TLS proxy or a development-only cookie configuration once the core exposes that option.
+  Secure cookies require HTTPS in browsers. For local HTTP-only development, set `CookieOptions.Secure` to `false` only in your local configuration.
+</Callout>
+
+<Callout title="Embedded demos" type="info">
+  Sandpack and other iframe demos can be cross-site. Those environments need `SameSite=None; Secure`, while normal same-site production apps should keep the default `Lax` and `Strict` values unless they have a specific reason to change them.
 </Callout>
 
 ## Store interface
