@@ -40,15 +40,6 @@ export default function Navbar({ sidebarTrigger: SidebarTrigger, layout = 'home'
                     ? "max-w-(--fd-layout-width,97rem) px-4 sm:px-6" 
                     : "max-w-236.25 px-3 xs:px-4 sm:px-6"
             )}>
-                {isDocsLayout && SidebarTrigger && (
-                    <>
-                        <SidebarTrigger className="mr-2 hidden md:flex" />
-                        <SidebarTrigger className="p-1.5 md:hidden shrink-0">
-                            <List size={18} />
-                        </SidebarTrigger>
-                    </>
-                )}
-
                 <Link href="/" className="flex items-center gap-1.5 xs:gap-2 shrink-0 ml-1 xs:ml-0">
                     <Image
                         src={authingoLogo}
@@ -73,6 +64,14 @@ export default function Navbar({ sidebarTrigger: SidebarTrigger, layout = 'home'
                 <div className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 md:gap-4 shrink-0 ml-auto">
                     <GithubLogoIcon size={16} onClick={handleGithubClick} className="hidden sm:block cursor-pointer shrink-0"/>
                     <ThemeSwitch />
+                    {isDocsLayout && SidebarTrigger && (
+                        <>
+                            <SidebarTrigger className="hidden md:flex" />
+                            <SidebarTrigger className="p-1.5 md:hidden shrink-0">
+                                <List size={18} />
+                            </SidebarTrigger>
+                        </>
+                    )}
                     {/* Only show mobile menu button for home layout */}
                     {!isDocsLayout && (
                         <button 

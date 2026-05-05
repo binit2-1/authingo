@@ -66,7 +66,7 @@ const page = () => {
                 rel="noreferrer"
                 className="h-10 sm:h-12 w-full sm:w-80 bg-[#0763EE] lg:ml-10 font-pixel flex justify-center lg:justify-start px-4 lg:pl-6 gap-2 items-center text-white cursor-pointer pointer-events-auto transition-opacity hover:opacity-90 mx-auto lg:mx-0"
               >
-                <span className="truncate">New Adapter: Postgres</span>
+                <span className="truncate font-pixel">New Adapter: Postgres</span>
                 <ArrowRightIcon
                   size={24}
                   color="currentColor"

@@ -60,7 +60,7 @@ const Page = () => {
             </h1>
 
             {/* Listed Examples */}
-            <div className="mt-8 px-10 pb-16">
+            <div className="mt-8 px-10 pb-28 sm:pb-20">
               <div className="grid border-t border-l border-fd-border grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] xl:grid-cols-4">
                 {PLAYGROUNDS.map((playground) => {
                   const Icon = playground.icon;
