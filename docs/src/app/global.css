@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 
 html {
   scrollbar-gutter: stable;
@@ -8,7 +8,7 @@ html {
 
 :root {
   --fd-nav-height: 64px !important;
-  --color-fd-primary: #0763EE;
+  --color-fd-primary: #0763ee;
   --color-fd-primary-foreground: #ffffff;
 }
 
@@ -27,16 +27,32 @@ html > body[data-scroll-locked] {
 }
 
 /* Title font: Geist Pixel for all headings */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-geist-pixel-square), monospace;
 }
 
-/* Body font: Manrope for all content */
-body, p, span, div, li, a, td, th, input, textarea, select, button {
-  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+/* Body font: Geist Sans for all content */
+body,
+p,
+span,
+div,
+li,
+a,
+td,
+th,
+input,
+textarea,
+select,
+button {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Override Fumadocs prose styles to use Manrope */
+/* Override Fumadocs prose styles to use Geist Sans */
 .prose p,
 .prose li,
 .prose span,
@@ -44,7 +60,7 @@ body, p, span, div, li, a, td, th, input, textarea, select, button {
 .prose a,
 .prose td,
 .prose th {
-  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Prose headings should use Geist Pixel */
@@ -63,5 +79,5 @@ body, p, span, div, li, a, td, th, input, textarea, select, button {
 }
 
 .font-manrope {
-  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }

@@ -5,7 +5,8 @@ import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 
 export default function Home() {
   const { data, isPending, error, refetch } = useSession();
-  
+
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("test@example.com");
   const [password, setPassword] = useState("password123");
   const [name, setName] = useState("Binit Gupta");
@@ -46,6 +47,31 @@ export default function Home() {
       <div className="p-8 w-full max-w-md bg-white shadow-xl rounded-xl border border-gray-100">
         <h1 className="text-3xl font-bold mb-2 text-gray-800 text-center">AuthInGo</h1>
         <p className="text-center text-gray-500 mb-8">Test your Go backend.</p>
+
+        <div className="mb-6 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("sign-in")}
+            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "sign-in"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("sign-up")}
+            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              mode === "sign-up"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            Create Account
+          </button>
+        </div>
         
         {error && !error.includes("No session cookie") && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm border border-red-100">
@@ -54,13 +80,15 @@ export default function Home() {
         )}
 
         <div className="space-y-4">
-          <input 
-            type="text" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
-            placeholder="Name (for Sign Up)"
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-          />
+          {mode === "sign-up" && (
+            <input 
+              type="text" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              placeholder="Name"
+              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          )}
           <input 
             type="email" 
             value={email} 
@@ -74,28 +102,30 @@ export default function Home() {
             className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
           />
           
-          <div className="flex gap-4 pt-4">
+          <div className="pt-4">
+            {mode === "sign-in" ? (
             <button 
               onClick={async () => {
                 const res = await signIn.email({ email, password });
                 if (!res.error) await refetch();
                 else alert(res.error.message);
               }}
-              className="flex-1 bg-gray-900 text-white font-medium p-3 rounded-lg hover:bg-gray-800 transition-colors"
+              className="w-full bg-gray-900 text-white font-medium p-3 rounded-lg hover:bg-gray-800 transition-colors"
             >
               Sign In
             </button>
-            
+            ) : (
             <button 
               onClick={async () => {
                 const res = await signUp.email({ email, password, name });
                 if (!res.error) await refetch();
                 else alert(res.error.message);
               }}
-              className="flex-1 bg-blue-600 text-white font-medium p-3 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full bg-blue-600 text-white font-medium p-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Sign Up
+              Create Account
             </button>
+            )}
           </div>
         </div>
       </div>

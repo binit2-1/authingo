@@ -33,12 +33,15 @@ const demoEndpoint = "https://demo-api.authingo.dev/api/auth";
 const basicAuthFiles: SandpackFiles = {
   "/App.tsx": {
     hidden: true,
-    code: `import { Providers } from "./app/providers";
+    code: `import { useState } from "react";
+import { Providers } from "./app/providers";
 import { Login } from "./app/login";
 import { SignUp } from "./app/sign-up";
 import "./styles.css";
 
 export default function App() {
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
+
   return (
     <Providers>
       <main className="page">
@@ -47,8 +50,25 @@ export default function App() {
             <h1>AuthInGo</h1>
             <p>Test your Go backend.</p>
           </div>
-          <Login />
-          <SignUp />
+
+          <div className="tabs">
+            <button
+              className={mode === "sign-in" ? "tab active" : "tab"}
+              onClick={() => setMode("sign-in")}
+              type="button"
+            >
+              Sign In
+            </button>
+            <button
+              className={mode === "sign-up" ? "tab active" : "tab"}
+              onClick={() => setMode("sign-up")}
+              type="button"
+            >
+              Create Account
+            </button>
+          </div>
+
+          {mode === "sign-in" ? <Login /> : <SignUp />}
         </section>
       </main>
     </Providers>
@@ -188,7 +208,7 @@ export function SignUp() {
           }
         }}
       >
-        Sign Up
+        Create Account
       </button>
     </div>
   );
@@ -205,8 +225,11 @@ h1 { font-size: 30px; line-height: 36px; font-weight: 700; margin: 0 0 8px; colo
 h2 { font-size: 24px; line-height: 32px; font-weight: 700; margin: 0 0 24px; color: #1f2937; }
 p { margin: 0; }
 .brand p { color: #6b7280; }
+.tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-bottom: 24px; border-radius: 8px; background: #f3f4f6; padding: 4px; }
+.tab { border: 0; border-radius: 6px; background: transparent; color: #6b7280; cursor: pointer; font-size: 14px; font-weight: 500; padding: 8px 12px; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
+.tab:hover { color: #111827; }
+.tab.active { background: #fff; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
 .form-stack { display: flex; flex-direction: column; gap: 16px; }
-.form-stack + .form-stack { margin-top: 16px; }
 input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; color: #111827; font-size: 16px; outline: none; transition: box-shadow 0.2s, border-color 0.2s; }
 input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.35); }
 .actions { display: flex; gap: 16px; padding-top: 16px; }
