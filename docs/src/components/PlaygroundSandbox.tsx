@@ -6,9 +6,10 @@ import {
   SandpackPreview,
   SandpackProvider,
 } from "@codesandbox/sandpack-react";
-import { PlayIcon } from "@phosphor-icons/react";
+
 import { useState } from "react";
 import type { PlaygroundSandpackConfig } from "@/lib/playgrounds";
+import { PlayIcon} from "raster-react"
 
 type PlaygroundSandboxProps = {
   sandpackConfig: PlaygroundSandpackConfig;
@@ -161,10 +162,10 @@ function SandboxRunButton({ onRun }: { onRun: () => void }) {
     <button
       type="button"
       onClick={onRun}
-      className="mr-3 flex h-full shrink-0 items-center gap-1.5 border-l border-fd-border bg-[#0763ee] px-3 font-pixel text-xs text-white transition-colors hover:bg-[#0752c6] sm:mr-10 sm:gap-2 sm:px-4 sm:text-sm"
+      className="mr-3 flex h-full shrink-0 cursor-pointer items-center gap-1.5 border-l border-fd-border bg-[#0763ee] px-3 font-pixel text-xs text-white transition-colors hover:bg-[#0752c6] sm:mr-10 sm:gap-2 sm:px-4 sm:text-sm"
     >
-      <PlayIcon size={15} weight="fill" />
-      <span>Run UI</span>
+      <PlayIcon size={32} color="#fefefe" strokeWidth={0.25} radius={1} />
+      <span className="font-pixel">Run UI</span>
     </button>
   );
 }
