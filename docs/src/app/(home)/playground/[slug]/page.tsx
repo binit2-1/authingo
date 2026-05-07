@@ -1,7 +1,9 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PlaygroundSandbox } from "@/components/PlaygroundSandbox";
 import { getPlayground, playgrounds } from "@/lib/playgrounds";
+import { createPageMetadata } from "@/lib/seo";
 
 type PlaygroundPageProps = {
   params: Promise<{
@@ -15,7 +17,9 @@ export function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: PlaygroundPageProps) {
+export async function generateMetadata({
+  params,
+}: PlaygroundPageProps): Promise<Metadata> {
   const { slug } = await params;
   const playground = getPlayground(slug);
 
@@ -23,10 +27,11 @@ export async function generateMetadata({ params }: PlaygroundPageProps) {
     return {};
   }
 
-  return {
+  return createPageMetadata({
     title: playground.seoMeta.title,
     description: playground.seoMeta.description,
-  };
+    path: `/playground/${playground.id}`,
+  });
 }
 
 export default async function Page({ params }: PlaygroundPageProps) {

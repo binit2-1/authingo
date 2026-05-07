@@ -1,4 +1,4 @@
-import { getPageImage, getPageMarkdownUrl, source } from '@/lib/source';
+import { getPageMarkdownUrl, source } from '@/lib/source';
 import {
   DocsBody,
   DocsDescription,
@@ -12,6 +12,7 @@ import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { gitConfig } from '@/lib/shared';
+import { createPageMetadata } from '@/lib/seo';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -53,11 +54,11 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  return {
+  return createPageMetadata({
     title: page.data.title,
-    description: page.data.description,
-    openGraph: {
-      images: getPageImage(page).url,
-    },
-  };
+    description:
+      page.data.description ??
+      "Learn how to build secure Go and React authentication flows with AuthInGo.",
+    path: page.url,
+  });
 }

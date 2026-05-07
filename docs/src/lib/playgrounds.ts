@@ -308,7 +308,7 @@ export const playgrounds: PlaygroundConfig[] = [
     seoMeta: {
       title: "Basic Authentication Playground",
       description:
-        "Try a live AuthInGo email/password authentication flow in Sandpack.",
+        "Run a live AuthInGo email and password authentication flow with the React SDK, Go API routes, and server-owned cookie sessions.",
     },
     sandpackConfig: {
       template: "react-ts",
@@ -336,7 +336,7 @@ export const playgrounds: PlaygroundConfig[] = [
     seoMeta: {
       title: "Instant Revocation Playground",
       description:
-        "Explore AuthInGo session revocation patterns for database-backed sessions.",
+        "Explore how AuthInGo can revoke opaque, database-backed sessions instantly across devices and browser tabs.",
     },
     sandpackConfig: {
       template: "react-ts",
@@ -351,7 +351,8 @@ export const playgrounds: PlaygroundConfig[] = [
     icon: "palette",
     seoMeta: {
       title: "Custom UI Playground",
-      description: "Build custom authentication interfaces with AuthInGo.",
+      description:
+        "Build custom authentication interfaces with AuthInGo's headless React SDK and your own component system.",
     },
     sandpackConfig: {
       template: "react-ts",
@@ -366,7 +367,8 @@ export const playgrounds: PlaygroundConfig[] = [
     icon: "vault",
     seoMeta: {
       title: "Protected Routes Playground",
-      description: "Learn how protected routes work with AuthInGo sessions.",
+      description:
+        "Learn how to protect application routes and redirect unauthenticated users with AuthInGo session checks.",
     },
     sandpackConfig: {
       template: "react-ts",
