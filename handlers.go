@@ -140,10 +140,16 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.store.GetUserByEmail(r.Context(), req.Email)
 	dummyHash := []byte("$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa")
 
-	if err != nil || user == nil {
+	user, err := a.store.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		log.Printf("DATABASE ERROR: %v\n", err)
+		http.Error(w, "Internal server error connecting to database", http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil {
 		bcrypt.CompareHashAndPassword(dummyHash, []byte(req.Password))
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
@@ -185,6 +191,7 @@ func (a *Auth) handleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	err = a.store.CreateSession(r.Context(), session)
 	if err != nil {
+		log.Printf("DATABASE ERROR: %v\n", err)
 		http.Error(w, "Failed to initialize user session", http.StatusInternalServerError)
 		return
 	}

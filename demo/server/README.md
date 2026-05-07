@@ -11,8 +11,8 @@ From the repository root:
 pnpm db:demo:up
 ```
 
-The demo compose file mounts `adapters/postgres/schema.sql`, so the AuthInGo
-tables and indexes are created when the Docker volume is first initialized.
+The demo compose file mounts `adapters/postgres/schema.sql`, and the demo server
+also applies that idempotent schema at startup.
 
 ## Configure Environment
 
@@ -43,7 +43,9 @@ Create a Render Web Service from the repository root and set the service
 language to `Docker`. The root `Dockerfile` builds only this demo server while
 keeping access to the root AuthInGo module and Postgres adapter.
 
-If Render asks for a health check path, use `/healthz`.
+If Render asks for a health check path, use `/healthz`. The health endpoint
+checks database connectivity, so a broken `DATABASE_URL` will fail health checks
+instead of surfacing as playground auth errors.
 
 Set these environment variables on the Render service:
 
@@ -61,8 +63,8 @@ and the server reads it automatically. For local Docker runs, the image defaults
 to `PORT=8080`.
 
 Use the Render Postgres internal database URL for `DATABASE_URL` when the
-database and service are in the same Render region. Initialize that database
-with `adapters/postgres/schema.sql` before using the playground.
+database and service are in the same Render region. The demo server applies the
+AuthInGo PostgreSQL schema automatically during startup.
 
 After deployment, point the docs playground endpoint at the deployed backend
 URL plus `/api/auth`, for example:

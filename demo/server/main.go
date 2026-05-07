@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net"
@@ -134,6 +135,9 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
+	if err := prepareDemoDatabase(db); err != nil {
+		log.Fatal("Failed to prepare database:", err)
+	}
 
 	auth := authingo.New(authingo.Options{
 		Store:   postgres.NewAdapter(db),
@@ -142,6 +146,14 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := db.PingContext(ctx); err != nil {
+			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
@@ -151,6 +163,17 @@ func main() {
 	port := demoServerPort()
 	log.Printf("Go Backend running on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
+}
+
+func prepareDemoDatabase(db *sql.DB) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return err
+	}
+
+	return postgres.ApplySchema(ctx, db)
 }
 
 func demoCookieOptions() authingo.CookieOptions {

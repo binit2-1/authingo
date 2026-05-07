@@ -23,9 +23,11 @@ go get github.com/jackc/pgx/v5/stdlib
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
+	"time"
 
 	"github.com/binit2-1/authingo"
 	"github.com/binit2-1/authingo/adapters/postgres"
@@ -38,8 +40,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := postgres.ApplySchema(ctx, db); err != nil {
+		log.Fatal(err)
+	}
+
+	adapter := postgres.NewAdapter(db)
+
 	auth := authingo.New(authingo.Options{
-		Store: postgres.NewAdapter(db),
+		Store: adapter,
 	})
 
 	_ = auth
@@ -48,7 +59,11 @@ func main() {
 
 ## Database Schema
 
-Run this schema before you start the application.
+For local development and demos, `postgres.ApplySchema(ctx, db)` runs the
+adapter's idempotent setup statements for you.
+
+For production applications, run the schema through your normal migration tool
+before starting the app.
 
 ```sql title="schema.sql"
 CREATE TABLE IF NOT EXISTS users (
@@ -78,7 +93,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires_at ON sessions(refresh_e
 ```
 
 <Callout title="Schema source" type="info">
-  The same schema lives in `adapters/postgres/schema.sql` in the repository.
+  The same schema lives in `adapters/postgres/schema.sql` in the repository and
+  is exported as `postgres.SchemaSQL` for tooling that wants to read it from Go.
 </Callout>
 
 ## Adapter behavior
@@ -124,4 +140,5 @@ if err := adapter.CleanupExpiredSessions(ctx); err != nil {
 - Use connection pooling settings appropriate for your application.
 - Keep `email` unique to prevent duplicate signups.
 - Keep the token and expiration indexes in place for fast lookups, refresh-token rotation, and bounded cleanup.
-- Run migrations with your normal migration tool instead of creating tables at request time.
+- Use `postgres.ApplySchema` for local development, demos, and simple starts.
+- Run migrations with your normal migration tool for production releases.

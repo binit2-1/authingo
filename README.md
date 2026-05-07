@@ -41,8 +41,11 @@ local port `5433`, and also loads the Postgres adapter schema.
 package main
 
 import (
+    "context"
     "database/sql"
+    "log"
     "net/http"
+    "time"
 
     "github.com/binit2-1/authingo"
     "github.com/binit2-1/authingo/adapters/postgres"
@@ -51,6 +54,13 @@ import (
 
 func main() {
     db, _ := sql.Open("pgx", "postgres://user:pass@localhost:5432/mydb")
+
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    if err := postgres.ApplySchema(ctx, db); err != nil {
+        log.Fatal(err)
+    }
     
     auth := authingo.New(authingo.Options{
         Store: postgres.NewAdapter(db),

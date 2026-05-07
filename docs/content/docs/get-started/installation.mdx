@@ -29,36 +29,14 @@ go get github.com/jackc/pgx/v5/stdlib
 
 <Step>
 
-### Create the database tables
+### Prepare the database tables
 
-Run the AuthInGo schema in your PostgreSQL database.
+The PostgreSQL adapter ships an idempotent schema helper. For local development
+and small demos, call `postgres.ApplySchema(ctx, db)` after opening your database
+connection in the server code below.
 
-```sql title="schema.sql"
-CREATE TABLE IF NOT EXISTS users (
-    id VARCHAR(255) PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-    id VARCHAR(255) PRIMARY KEY,
-    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token VARCHAR(255) UNIQUE NOT NULL,
-    refresh_token VARCHAR(255) UNIQUE NOT NULL,
-    refresh_expires_at TIMESTAMPTZ NOT NULL,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON sessions(refresh_token);
-CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_sessions_refresh_expires_at ON sessions(refresh_expires_at);
-```
+For production applications, put the same schema into your normal migration
+tool. The full SQL lives in `adapters/postgres/schema.sql`.
 
 </Step>
 
@@ -72,10 +50,12 @@ Create the AuthInGo engine with a storage adapter, then mount the built-in handl
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/binit2-1/authingo"
 	"github.com/binit2-1/authingo/adapters/postgres"
@@ -85,6 +65,13 @@ import (
 func main() {
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := postgres.ApplySchema(ctx, db); err != nil {
 		log.Fatal(err)
 	}
 

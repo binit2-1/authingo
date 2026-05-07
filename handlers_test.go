@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,6 +17,7 @@ import (
 type mockAuthStore struct {
 	user           *User
 	session        *Session
+	getUserErr     error
 	sessionDeleted bool
 	refreshCalled  bool
 }
@@ -26,6 +28,9 @@ func (m *mockAuthStore) CreateUser(ctx context.Context, user *User) error {
 }
 
 func (m *mockAuthStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	if m.getUserErr != nil {
+		return nil, m.getUserErr
+	}
 	if m.user != nil && m.user.Email == email {
 		return m.user, nil
 	}
@@ -188,6 +193,24 @@ func TestHandleSignIn_WrongPassword(t *testing.T) {
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("Expected 401 Unauthorized for wrong password, got %v", rr.Code)
+	}
+}
+
+func TestHandleSignIn_DatabaseError(t *testing.T) {
+	store := &mockAuthStore{getUserErr: errors.New("database unavailable")}
+	auth := New(Options{Store: store})
+
+	payload := signInRequest{Email: "binit@example.com", Password: "correctpassword"}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/sign-in", bytes.NewReader(body))
+	req.Header.Set("X-Authingo-Client", "true")
+	rr := httptest.NewRecorder()
+
+	auth.handleSignIn(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("Expected 500 Internal Server Error for database errors, got %v", rr.Code)
 	}
 }
 
