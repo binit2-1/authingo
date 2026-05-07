@@ -83,7 +83,7 @@ export function PlaygroundSandbox({ sandpackConfig }: PlaygroundSandboxProps) {
           <SandboxRunButton onRun={() => setView("preview")} />
         </div>
 
-        <div className="min-h-0 flex-1 px-4 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 px-6 py-5 sm:px-10">
           <div className="authingo-sandbox h-full min-h-0 overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950 shadow-2xl">
             <div
               className={`h-full min-h-0 ${view === "code" ? "block" : "hidden"}`}
