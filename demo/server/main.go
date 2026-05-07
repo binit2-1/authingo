@@ -121,9 +121,8 @@ func isAllowedOrigin(origin string) bool {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("Skipping .env load: %v", err)
 	}
 
 	db, err := sql.Open("pgx", demoDatabaseURL())
@@ -137,12 +136,16 @@ func main() {
 	})
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.Handle("/api/auth/", http.StripPrefix("/api/auth", auth.Handler()))
 
 	handlerWithCORS := corsMiddleware(rateLimitSignups(newSignupLimiter(5, time.Minute), mux))
 
-	log.Println("Go Backend running on http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", handlerWithCORS))
+	port := demoServerPort()
+	log.Printf("Go Backend running on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, handlerWithCORS))
 }
 
 func demoCookieOptions() authingo.CookieOptions {
@@ -167,4 +170,12 @@ func demoDatabaseURL() string {
 	}
 
 	return "postgres://authingo_demo:authingo_demo_password@localhost:5433/authingo_demo?sslmode=disable"
+}
+
+func demoServerPort() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return port
+	}
+
+	return "8080"
 }

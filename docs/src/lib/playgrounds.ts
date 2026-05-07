@@ -28,7 +28,9 @@ export type PlaygroundConfig = {
   sandpackConfig: PlaygroundSandpackConfig;
 };
 
-const demoEndpoint = "https://demo-api.authingo.dev/api/auth";
+const demoEndpoint =
+  process.env.NEXT_PUBLIC_AUTHINGO_DEMO_ENDPOINT ??
+  "https://demo-api.authingo.dev/api/auth";
 
 const basicAuthFiles: SandpackFiles = {
   "/App.tsx": {

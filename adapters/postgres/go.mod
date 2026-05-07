@@ -17,5 +17,3 @@ require (
 )
 
 replace github.com/binit2-1/authingo => ../../
-
-replace github.com/binit2-1/authingo/adapters/postgres => ../adapters/postgres
