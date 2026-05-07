@@ -53,6 +53,9 @@ AUTHINGO_CROSS_SITE_COOKIES=true
 AUTHINGO_ALLOWED_ORIGINS=https://your-docs-domain.com
 ```
 
+Use origins only, not full URLs with paths. A trailing slash is OK, but the
+canonical value should look like `https://authingo.vercel.app`.
+
 `PORT` is optional. Render provides `PORT=10000` by default for web services,
 and the server reads it automatically. For local Docker runs, the image defaults
 to `PORT=8080`.

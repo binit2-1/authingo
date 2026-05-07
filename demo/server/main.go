@@ -108,8 +108,9 @@ func isAllowedOrigin(origin string) bool {
 		return false
 	}
 
+	origin = normalizeOrigin(origin)
 	for _, configured := range strings.Split(os.Getenv("AUTHINGO_ALLOWED_ORIGINS"), ",") {
-		if strings.TrimSpace(configured) == origin {
+		if normalizeOrigin(configured) == origin {
 			return true
 		}
 	}
@@ -118,6 +119,10 @@ func isAllowedOrigin(origin string) bool {
 		origin == "http://127.0.0.1:3000" ||
 		strings.HasSuffix(origin, ".csb.app") ||
 		strings.HasSuffix(origin, ".codesandbox.io")
+}
+
+func normalizeOrigin(origin string) string {
+	return strings.TrimRight(strings.TrimSpace(origin), "/")
 }
 
 func main() {
