@@ -56,7 +56,7 @@ AUTHINGO_ALLOWED_ORIGINS=https://your-docs-domain.com
 ```
 
 Use origins only, not full URLs with paths. A trailing slash is OK, but the
-canonical value should look like `https://authingo.vercel.app`.
+canonical value should look like `https://authingo.binitt.dev`.
 
 `PORT` is optional. Render provides `PORT=10000` by default for web services,
 and the server reads it automatically. For local Docker runs, the image defaults

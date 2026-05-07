@@ -118,6 +118,7 @@ func isAllowedOrigin(origin string) bool {
 
 	return origin == "http://localhost:3000" ||
 		origin == "http://127.0.0.1:3000" ||
+		origin == "https://authingo.binitt.dev" ||
 		strings.HasSuffix(origin, ".csb.app") ||
 		strings.HasSuffix(origin, ".codesandbox.io")
 }

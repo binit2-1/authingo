@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const siteName = "AuthInGo";
 export const siteUrl = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://authingo.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://authingo.binitt.dev"
 ).replace(/\/$/, "");
 
 export const siteDescription =
