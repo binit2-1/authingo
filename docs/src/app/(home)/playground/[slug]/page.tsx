@@ -37,8 +37,8 @@ export default async function Page({ params }: PlaygroundPageProps) {
 
   return (
     <div className="relative -mt-16 h-[calc(100vh+4rem)] w-full overflow-hidden bg-fd-background flex items-center justify-center">
-      <div className="relative mx-auto flex h-full w-full max-w-5xl items-center justify-center">
-        <div className="pointer-events-none fixed left-1/2 top-0 z-40 h-[calc(100vh+4rem)] w-5xl -translate-x-1/2">
+      <div className="relative mx-auto flex h-full w-full max-w-[1400px] items-center justify-center">
+        <div className="pointer-events-none fixed left-1/2 top-0 z-40 h-[calc(100vh+4rem)] w-full max-w-[1400px] -translate-x-1/2">
           <VerticalScales className="absolute left-0 top-0 h-full w-10 border-x border-fd-border" />
           <VerticalScales className="absolute right-0 top-0 h-full w-10 border-x border-fd-border" />
         </div>
