@@ -8,6 +8,21 @@ export const siteUrl = (
 export const siteDescription =
   "AuthInGo is a secure, cookie-based authentication toolkit for Go backends and React frontends with opaque sessions, PostgreSQL storage, and a tiny developer experience.";
 
+function formatTwitterHandle(handle?: string) {
+  const value = handle?.trim();
+  if (!value) return undefined;
+  return value.startsWith("@") ? value : `@${value}`;
+}
+
+export const twitterSite = formatTwitterHandle(
+  process.env.NEXT_PUBLIC_TWITTER_SITE ??
+    process.env.NEXT_PUBLIC_TWITTER_HANDLE,
+);
+export const twitterCreator = formatTwitterHandle(
+  process.env.NEXT_PUBLIC_TWITTER_CREATOR ??
+    process.env.NEXT_PUBLIC_TWITTER_HANDLE,
+);
+
 export const siteKeywords = [
   "AuthInGo",
   "Go authentication",
@@ -21,9 +36,10 @@ export const siteKeywords = [
 ];
 
 export const defaultOgImage = {
-  path: "/og-image.png",
+  path: "/og-image.png?v=20260508",
   width: 1200,
   height: 630,
+  type: "image/png",
   alt: "AuthInGo authentication toolkit for Go and React",
 };
 
@@ -71,19 +87,26 @@ export function createPageMetadata({
       images: [
         {
           url: imageUrl,
+          secureUrl: imageUrl,
           width: image.width,
           height: image.height,
+          type: image.type,
           alt: image.alt,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
+      ...(twitterSite ? { site: twitterSite } : {}),
+      ...(twitterCreator ? { creator: twitterCreator } : {}),
       title: socialTitle,
       description,
       images: [
         {
           url: imageUrl,
+          width: image.width,
+          height: image.height,
+          type: image.type,
           alt: image.alt,
         },
       ],

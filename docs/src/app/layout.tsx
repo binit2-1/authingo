@@ -11,6 +11,8 @@ import {
   siteKeywords,
   siteName,
   siteUrl,
+  twitterCreator,
+  twitterSite,
 } from "@/lib/seo";
 
 type Props = { children: React.ReactNode };
@@ -41,19 +43,26 @@ export const metadata: Metadata = {
     images: [
       {
         url: absoluteUrl(defaultOgImage.path),
+        secureUrl: absoluteUrl(defaultOgImage.path),
         width: defaultOgImage.width,
         height: defaultOgImage.height,
+        type: defaultOgImage.type,
         alt: defaultOgImage.alt,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
+    ...(twitterSite ? { site: twitterSite } : {}),
+    ...(twitterCreator ? { creator: twitterCreator } : {}),
     title: "AuthInGo - Authentication for Go & React",
     description: siteDescription,
     images: [
       {
         url: absoluteUrl(defaultOgImage.path),
+        width: defaultOgImage.width,
+        height: defaultOgImage.height,
+        type: defaultOgImage.type,
         alt: defaultOgImage.alt,
       },
     ],
