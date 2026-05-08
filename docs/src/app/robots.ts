@@ -3,11 +3,18 @@ import { absoluteUrl, siteUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: ["/api/", "/llms.mdx/", "/og/"],
-    },
+    rules: [
+      {
+        userAgent: "Twitterbot",
+        allow: ["/", "/api/og", "/og/"],
+        disallow: ["/api/", "/llms.mdx/"],
+      },
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/api/", "/llms.mdx/"],
+      },
+    ],
     sitemap: absoluteUrl("/sitemap.xml"),
     host: siteUrl,
   };
