@@ -20,6 +20,22 @@ function formatDate(date: string) {
   return dateFormatter.format(new Date(`${date}T00:00:00Z`));
 }
 
+function compareVersions(a: string, b: string) {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  const length = Math.max(left.length, right.length);
+
+  for (let index = 0; index < length; index++) {
+    const difference = (right[index] ?? 0) - (left[index] ?? 0);
+
+    if (difference !== 0) {
+      return difference;
+    }
+  }
+
+  return 0;
+}
+
 type ChangelogEntry = {
   body: React.ComponentType;
   date: string;
@@ -32,7 +48,12 @@ type ChangelogEntry = {
 
 export default function ChangelogPage() {
   const entries = (changelog as unknown as ChangelogEntry[]).toSorted(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    (a, b) => {
+      const dateDifference =
+        new Date(b.date).getTime() - new Date(a.date).getTime();
+
+      return dateDifference || compareVersions(a.version, b.version);
+    },
   );
   const latest = entries[0];
 
