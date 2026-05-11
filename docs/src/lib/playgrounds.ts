@@ -28,9 +28,7 @@ export type PlaygroundConfig = {
   sandpackConfig: PlaygroundSandpackConfig;
 };
 
-const demoEndpoint =
-
-  "https://authingo.onrender.com/api/auth";
+const demoEndpoint = "https://authingo.onrender.com/api/auth";
 
 const basicAuthFiles: SandpackFiles = {
   "/App.tsx": {
@@ -248,6 +246,380 @@ input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.35)
   },
 };
 
+const revocationFiles: SandpackFiles = {
+  "/lib/auth-client.ts": {
+    code: `import { createAuthClient } from "@authingo/react";
+
+export const authClient = createAuthClient({
+  baseURL: "${demoEndpoint}",
+});`,
+  },
+  "/app/providers.tsx": {
+    code: `"use client";
+
+import { AuthProvider } from "@authingo/react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider baseURL="${demoEndpoint}">
+      {children}
+    </AuthProvider>
+  );
+}`,
+  },
+  "/app/login.tsx": {
+    code: `"use client";
+
+import { useState } from "react";
+import { useAuth } from "@authingo/react";
+import { authClient } from "../lib/auth-client";
+
+const createDemoEmail = () =>
+  \`demo-\${Math.random().toString(36).slice(2, 8)}@authingo.dev\`;
+
+export function Login() {
+  const { checkSession, error: sessionError } = useAuth();
+  const [email, setEmail] = useState(createDemoEmail);
+  const [password, setPassword] = useState("password");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setAuthError(null);
+
+    // Auto-create account for demo purposes if it does not exist.
+    const signUpResult = await authClient.signUp.email({
+      email,
+      password,
+      name: "Demo User",
+    });
+    const result = await authClient.signIn.email({ email, password });
+
+    if (!result.error) {
+      await checkSession();
+    } else {
+      setAuthError(signUpResult.error?.message ?? result.error.message);
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Authentication</p>
+      <h2>Access Dashboard</h2>
+      <p className="muted">Log in to view and manage your active sessions.</p>
+
+      <form onSubmit={handleSignIn} className="form-stack">
+        <label>
+          Email
+          <input value={email} onChange={(event) => setEmail(event.target.value)} />
+        </label>
+        <label>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+        {authError || sessionError ? (
+          <p className="error">{authError ?? sessionError}</p>
+        ) : null}
+        <button type="submit" className="button primary" disabled={isLoading}>
+          {isLoading ? "Authenticating..." : "Secure Login"}
+        </button>
+      </form>
+    </div>
+  );
+}`,
+  },
+  "/app/dashboard.tsx": {
+    code: `"use client";
+
+import { MonitorCheck, ShieldAlert } from "lucide-react";
+import { useAuth } from "@authingo/react";
+
+export function Dashboard() {
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="card">
+      <div className="header-flex">
+        <div>
+          <p className="eyebrow">Security Center</p>
+          <h2>Current Session</h2>
+        </div>
+        <ShieldAlert className="text-blue" size={28} />
+      </div>
+
+      <p className="muted mb-4">
+        This is the real session returned by the AuthInGo backend. Revoking it
+        calls logout(), deletes the database session, and returns you to login.
+      </p>
+
+      <div className="session-list">
+        <div className="session-item current">
+          <div className="device-info">
+            <MonitorCheck size={20} className="text-blue" />
+            <div>
+              <strong>Current browser session</strong>
+              <span className="badge">Live</span>
+              <p className="meta">{user.email}</p>
+              <p className="meta">User ID: {user.id}</p>
+            </div>
+          </div>
+          <button onClick={() => logout()} className="button danger-outline">
+            Revoke
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}`,
+  },
+  "/App.tsx": {
+    hidden: true,
+    code: `import { useAuth } from "@authingo/react";
+import { Dashboard } from "./app/dashboard";
+import { Login } from "./app/login";
+import { Providers } from "./app/providers";
+import "./styles.css";
+
+function AuthRouter() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="card">
+        <p className="muted">Loading secure session...</p>
+      </div>
+    );
+  }
+
+  return user ? <Dashboard /> : <Login />;
+}
+
+export default function App() {
+  return (
+    <Providers>
+      <main className="shell">
+        <AuthRouter />
+      </main>
+    </Providers>
+  );
+}`,
+  },
+  "/styles.css": {
+    hidden: true,
+    code: `* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+body {
+  align-items: flex-start;
+  background: #0a0a0a;
+  color: #ededed;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  min-height: 100vh;
+  padding-top: 40px;
+}
+
+.shell {
+  max-width: 500px;
+  padding: 20px;
+  width: 100%;
+}
+
+.card {
+  background: #171717;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 32px;
+}
+
+.eyebrow {
+  color: #00ADD8;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.muted {
+  color: #a3a3a3;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.mb-4 {
+  margin-bottom: 24px;
+}
+
+.text-blue {
+  color: #00ADD8;
+}
+
+.text-muted {
+  color: #737373;
+}
+
+.header-flex {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+label {
+  color: #d4d4d4;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+}
+
+input {
+  background: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  outline: none;
+  padding: 10px 12px;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  border-color: #00ADD8;
+}
+
+.button {
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  transition: all 0.2s;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button.primary {
+  background: #00ADD8;
+  color: #000;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.button.primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.button.danger-outline {
+  background: transparent;
+  border: 1px solid #450a0a;
+  color: #ef4444;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.button.danger-outline:hover {
+  background: #450a0a;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-item {
+  align-items: center;
+  background: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.session-item.current {
+  border-color: rgba(0, 173, 216, 0.3);
+}
+
+.device-info {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.device-info strong {
+  color: #e5e5e5;
+  display: inline-block;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.meta {
+  color: #737373;
+  font-size: 12px;
+  margin: 0;
+}
+
+.badge {
+  background: rgba(0, 173, 216, 0.1);
+  border-radius: 4px;
+  color: #00ADD8;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 8px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}`,
+  },
+};
+
 const placeholderFiles = (title: string): SandpackFiles => ({
   "/App.tsx": `import "./styles.css";
 
@@ -301,12 +673,11 @@ h1 {
 export const playgrounds: PlaygroundConfig[] = [
   {
     id: "basic",
-    title: "Basic Authentication",
-    description:
-      "Implement a secure email/password login with the AuthInGo React SDK and server-owned cookie sessions.",
+    title: "Email Login",
+    description: "Create an account and sign in with the AuthInGo React SDK.",
     icon: "password",
     seoMeta: {
-      title: "Basic Authentication Playground",
+      title: "Email Login Playground",
       description:
         "Run a live AuthInGo email and password authentication flow with the React SDK, Go API routes, and server-owned cookie sessions.",
     },
@@ -329,41 +700,52 @@ export const playgrounds: PlaygroundConfig[] = [
   },
   {
     id: "revocation",
-    title: "Instant Revocation",
+    title: "Session Revocation",
     description:
-      "The opaque token advantage. Instantly kill database-backed sessions across devices.",
+      "Revoke the current database-backed session and return to login.",
     icon: "shield",
     seoMeta: {
-      title: "Instant Revocation Playground",
+      title: "Session Revocation Playground",
       description:
-        "Explore how AuthInGo can revoke opaque, database-backed sessions instantly across devices and browser tabs.",
+        "Explore how AuthInGo can revoke an opaque, database-backed session instantly from the React SDK.",
     },
     sandpackConfig: {
       template: "react-ts",
-      files: placeholderFiles("Instant Revocation"),
+      files: revocationFiles,
+      activeFile: "/app/dashboard.tsx",
+      visibleFiles: [
+        "/lib/auth-client.ts",
+        "/app/providers.tsx",
+        "/app/login.tsx",
+        "/app/dashboard.tsx",
+      ],
+      customSetup: {
+        dependencies: {
+          "@authingo/react": "latest",
+          "lucide-react": "latest",
+        },
+      },
     },
   },
   {
     id: "custom-ui",
-    title: "Bring Your Own UI",
-    description:
-      "Total frontend freedom. Wire the headless AuthInGo SDK to any custom component.",
+    title: "Custom Login UI",
+    description: "Wire AuthInGo actions to your own form components.",
     icon: "palette",
     seoMeta: {
-      title: "Custom UI Playground",
+      title: "Custom Login UI Playground",
       description:
         "Build custom authentication interfaces with AuthInGo's headless React SDK and your own component system.",
     },
     sandpackConfig: {
       template: "react-ts",
-      files: placeholderFiles("Bring Your Own UI"),
+      files: placeholderFiles("Custom Login UI"),
     },
   },
   {
     id: "protected-routes",
-    title: "The Vault",
-    description:
-      "Secure specific routes and auto-redirect unauthenticated traffic.",
+    title: "Protected Routes",
+    description: "Redirect signed-out users away from private pages.",
     icon: "vault",
     seoMeta: {
       title: "Protected Routes Playground",
@@ -372,7 +754,7 @@ export const playgrounds: PlaygroundConfig[] = [
     },
     sandpackConfig: {
       template: "react-ts",
-      files: placeholderFiles("The Vault"),
+      files: placeholderFiles("Protected Routes"),
     },
   },
 ];

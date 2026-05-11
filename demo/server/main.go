@@ -139,6 +139,7 @@ func main() {
 	if err := prepareDemoDatabase(db); err != nil {
 		log.Fatal("Failed to prepare database:", err)
 	}
+	startDemoUserCleanup(db)
 
 	auth := authingo.New(authingo.Options{
 		Store:   postgres.NewAdapter(db),
@@ -175,6 +176,67 @@ func prepareDemoDatabase(db *sql.DB) error {
 	}
 
 	return postgres.ApplySchema(ctx, db)
+}
+
+func startDemoUserCleanup(db *sql.DB) {
+	go func() {
+		runDemoUserCleanup(db)
+
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			runDemoUserCleanup(db)
+		}
+	}()
+}
+
+func runDemoUserCleanup(db *sql.DB) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	deleted, err := cleanupDemoUsers(ctx, db, time.Now().Add(-48*time.Hour))
+	if err != nil {
+		log.Printf("Demo cleanup error: failed to delete stale demo users: %v\n", err)
+		return
+	}
+	if deleted > 0 {
+		log.Printf("Demo cleanup deleted %d stale demo users\n", deleted)
+	}
+}
+
+func cleanupDemoUsers(ctx context.Context, db *sql.DB, olderThan time.Time) (int64, error) {
+	const batchSize int64 = 500
+	const query = `
+		WITH stale_demo_users AS (
+			SELECT id
+			FROM users
+			WHERE email LIKE 'demo-%@authingo.dev'
+			  AND created_at < $1
+			ORDER BY created_at
+			LIMIT $2
+		)
+		DELETE FROM users
+		WHERE id IN (SELECT id FROM stale_demo_users)
+	`
+
+	var total int64
+	for {
+		result, err := db.ExecContext(ctx, query, olderThan, batchSize)
+		if err != nil {
+			return total, err
+		}
+
+		deleted, err := result.RowsAffected()
+		if err != nil {
+			return total, err
+		}
+
+		total += deleted
+		if deleted < batchSize {
+			return total, nil
+		}
+	}
 }
 
 func demoCookieOptions() authingo.CookieOptions {
