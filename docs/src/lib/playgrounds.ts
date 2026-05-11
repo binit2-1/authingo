@@ -620,55 +620,1116 @@ input:focus {
   },
 };
 
-const placeholderFiles = (title: string): SandpackFiles => ({
-  "/App.tsx": `import "./styles.css";
+const customUIFiles: SandpackFiles = {
+  "/lib/auth-client.ts": {
+    code: `import { createAuthClient } from "@authingo/react";
+
+export const authClient = createAuthClient({
+  baseURL: "${demoEndpoint}",
+});`,
+  },
+  "/app/providers.tsx": {
+    code: `"use client";
+
+import { AuthProvider } from "@authingo/react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider baseURL="${demoEndpoint}">
+      {children}
+    </AuthProvider>
+  );
+}`,
+  },
+  "/app/custom-login.tsx": {
+    code: `"use client";
+
+import { useState } from "react";
+import { ArrowRight, AtSign, KeyRound, LogOut } from "lucide-react";
+import { useAuth } from "@authingo/react";
+import { authClient } from "../lib/auth-client";
+
+const createDemoEmail = () =>
+  \`demo-\${Math.random().toString(36).slice(2, 8)}@authingo.dev\`;
+
+export function CustomLogin() {
+  const { user, checkSession, logout, error: sessionError } = useAuth();
+  const [email, setEmail] = useState(createDemoEmail);
+  const [password, setPassword] = useState("password");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setAuthError(null);
+
+    // Demo helper: create the random account first, then use normal sign in.
+    const signUpResult = await authClient.signUp.email({
+      email,
+      password,
+      name: "AuthInGo Demo",
+    });
+    const result = await authClient.signIn.email({ email, password });
+
+    if (!result.error) {
+      await checkSession();
+    } else {
+      setAuthError(signUpResult.error?.message ?? result.error.message);
+    }
+
+    setIsLoading(false);
+  };
+
+  if (user) {
+    return (
+      <section className="auth-panel signed-in">
+        <div className="panel-band">
+          <span>session</span>
+          <span>active</span>
+        </div>
+
+        <h1>Signed in</h1>
+        <p className="muted">Current account</p>
+
+        <div className="identity-strip">
+          <span>{user.email}</span>
+        </div>
+
+        <button className="secondary-button" type="button" onClick={() => logout()}>
+          <LogOut size={16} />
+          Sign out
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="auth-panel">
+      <div className="panel-band">
+        <span>AuthInGo</span>
+        <span>headless</span>
+      </div>
+
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Custom Login UI</p>
+          <h1>Build the form your product needs.</h1>
+        </div>
+      </div>
+
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Email</span>
+          <div className="field-control">
+            <AtSign className="field-icon" size={18} />
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="demo@authingo.dev"
+            />
+          </div>
+        </label>
+
+        <label className="field">
+          <span>Password</span>
+          <div className="field-control">
+            <KeyRound className="field-icon" size={18} />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="password"
+            />
+          </div>
+        </label>
+
+        {authError || sessionError ? (
+          <p className="error">{authError ?? sessionError}</p>
+        ) : null}
+
+        <button className="primary-button" type="submit" disabled={isLoading}>
+          <span>{isLoading ? "Creating session" : "Create demo session"}</span>
+          <ArrowRight size={16} />
+        </button>
+      </form>
+    </section>
+  );
+}`,
+  },
+  "/App.tsx": {
+    hidden: true,
+    code: `import { CustomLogin } from "./app/custom-login";
+import { Providers } from "./app/providers";
+import "./styles.css";
 
 export default function App() {
   return (
-    <main className="shell">
-      <section className="card">
-        <p>Coming soon</p>
-        <h1>${title}</h1>
-        <span>This playground is registered and ready for implementation.</span>
-      </section>
-    </main>
+    <Providers>
+      <main className="page-shell">
+        <CustomLogin />
+      </main>
+    </Providers>
   );
 }`,
+  },
   "/styles.css": {
     hidden: true,
-    code: `body {
+    code: `@font-face {
+  font-family: "Geist Sans";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.7.0/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: "Geist Pixel Square";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.7.0/dist/fonts/geist-pixel/GeistPixel-Square.woff2") format("woff2");
+  font-weight: 400;
+}
+
+:root {
+  --brand: #0763EE;
+  --brand-hover: #0752c6;
+  --bg: #0a0a0a;
+  --border: #262626;
+  --muted: #a3a3a3;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+body {
+  background: var(--bg);
+  color: #ededed;
   margin: 0;
-  background: #050505;
-  color: white;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.shell {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 32px;
 }
 
-.card {
-  max-width: 420px;
-  border: 1px solid #262626;
-  border-radius: 16px;
+.page-shell {
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(38, 38, 38, 0.45) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(38, 38, 38, 0.45) 1px, transparent 1px),
+    var(--bg);
+  background-size: 40px 40px;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
   padding: 28px;
+  position: relative;
 }
 
-p {
-  color: #0763ee;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+.page-shell::before,
+.page-shell::after {
+  background-image: repeating-linear-gradient(
+    315deg,
+    rgba(115, 115, 115, 0.32) 0,
+    rgba(115, 115, 115, 0.32) 1px,
+    transparent 1px,
+    transparent 50%
+  );
+  background-size: 10px 10px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  content: "";
+  height: 100%;
+  position: fixed;
+  top: 0;
+  width: 38px;
+}
+
+.page-shell::before {
+  left: max(16px, calc(50% - 500px));
+}
+
+.page-shell::after {
+  right: max(16px, calc(50% - 500px));
+}
+
+.auth-panel {
+  background: rgba(10, 10, 10, 0.94);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  max-width: 456px;
+  min-height: 520px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  z-index: 1;
+}
+
+.auth-panel::before {
+  background: linear-gradient(90deg, transparent, rgba(7, 99, 238, 0.48), transparent);
+  content: "";
+  height: 1px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.panel-band {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  height: 44px;
+  justify-content: space-between;
+}
+
+.panel-band span {
+  align-items: center;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 12px;
+  height: 100%;
+  padding: 0 18px;
+}
+
+.panel-band span:last-child {
+  border-left: 1px solid var(--border);
+  border-right: 0;
+  color: var(--brand);
+}
+
+.panel-heading {
+  padding: 34px 34px 24px;
+}
+
+.eyebrow {
+  color: var(--brand);
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  margin: 0 0 10px;
 }
 
 h1 {
-  margin: 0 0 12px;
+  color: #ffffff;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.login-form {
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 34px 34px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: #d4d4d4;
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.field-control {
+  align-items: center;
+  background: #050505;
+  border: 1px solid var(--border);
+  display: flex;
+  min-height: 48px;
+  position: relative;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+}
+
+.field-control:focus-within {
+  background: #080808;
+  border-color: rgba(7, 99, 238, 0.76);
+  box-shadow: 0 0 0 1px rgba(7, 99, 238, 0.28);
+}
+
+.field-icon {
+  color: #737373;
+  flex: 0 0 auto;
+  margin-left: 15px;
+  transition: color 0.18s;
+}
+
+.field-control:focus-within .field-icon {
+  color: var(--brand);
+}
+
+input {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  flex: 1;
+  font-size: 14px;
+  height: 48px;
+  min-width: 0;
+  outline: none;
+  padding: 0 14px 0 12px;
+}
+
+input::placeholder {
+  color: #525252;
+}
+
+.primary-button,
+.secondary-button {
+  align-items: center;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 400;
+  gap: 10px;
+  justify-content: center;
+  min-height: 48px;
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s, transform 0.18s;
+  width: 100%;
+}
+
+.primary-button {
+  background: var(--brand);
+  color: #ffffff;
+  margin-top: 6px;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--brand-hover);
+  box-shadow: 0 0 28px rgba(7, 99, 238, 0.36);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.secondary-button {
+  background: #ffffff;
+  color: var(--bg);
+  margin: 28px 34px 34px;
+  width: calc(100% - 68px);
+}
+
+.secondary-button:hover {
+  background: var(--brand);
+  color: #ffffff;
+  box-shadow: 0 0 28px rgba(7, 99, 238, 0.32);
+}
+
+.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.signed-in {
+  min-height: auto;
+  text-align: center;
+}
+
+.signed-in h1 {
+  font-size: 32px;
+  margin: 42px 34px 10px;
+}
+
+.identity-strip {
+  background: #050505;
+  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  color: #ededed;
+  font-size: 13px;
+  margin-top: 26px;
+  overflow-wrap: anywhere;
+  padding: 15px 18px;
+}
+
+@media (max-width: 520px) {
+  .page-shell {
+    padding: 20px;
+  }
+
+  .page-shell::before,
+  .page-shell::after {
+    display: none;
+  }
+
+  .panel-heading,
+  .login-form {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
 }`,
   },
-});
+};
+
+const protectedRoutesFiles: SandpackFiles = {
+  "/lib/auth-client.ts": {
+    code: `import { createAuthClient } from "@authingo/react";
+
+export const authClient = createAuthClient({
+  baseURL: "${demoEndpoint}",
+});`,
+  },
+  "/app/providers.tsx": {
+    code: `"use client";
+
+import { AuthProvider } from "@authingo/react";
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider baseURL="${demoEndpoint}">
+      {children}
+    </AuthProvider>
+  );
+}`,
+  },
+  "/app/protected-route.tsx": {
+    code: `"use client";
+
+import { LockKeyhole } from "lucide-react";
+import { useAuth } from "@authingo/react";
+
+type ProtectedRouteProps = {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+};
+
+export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <section className="route-card compact">
+        <LockKeyhole size={22} />
+        <div>
+          <p className="eyebrow">Checking Session</p>
+          <h1>Verifying access</h1>
+        </div>
+      </section>
+    );
+  }
+
+  if (!user) {
+    return fallback;
+  }
+
+  return <>{children}</>;
+}`,
+  },
+  "/app/login.tsx": {
+    code: `"use client";
+
+import { useState } from "react";
+import { ArrowRight, AtSign, KeyRound } from "lucide-react";
+import { useAuth } from "@authingo/react";
+import { authClient } from "../lib/auth-client";
+
+const createDemoEmail = () =>
+  \`demo-\${Math.random().toString(36).slice(2, 8)}@authingo.dev\`;
+
+type LoginProps = {
+  redirectFrom: string;
+  onSuccess: () => void;
+};
+
+export function Login({ redirectFrom, onSuccess }: LoginProps) {
+  const { checkSession, error: sessionError } = useAuth();
+  const [email, setEmail] = useState(createDemoEmail);
+  const [password, setPassword] = useState("password");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setAuthError(null);
+
+    // Demo helper: create the random account first, then use normal sign in.
+    const signUpResult = await authClient.signUp.email({
+      email,
+      password,
+      name: "Protected Route Demo",
+    });
+    const result = await authClient.signIn.email({ email, password });
+
+    if (!result.error) {
+      await checkSession();
+      onSuccess();
+    } else {
+      setAuthError(signUpResult.error?.message ?? result.error.message);
+    }
+
+    setIsLoading(false);
+  };
+
+  return (
+    <section className="route-card">
+      <div className="panel-band">
+        <span>redirect</span>
+        <span>{redirectFrom}</span>
+      </div>
+
+      <div className="panel-body">
+        <p className="eyebrow">Protected Route</p>
+        <h1>Sign in before entering the private route.</h1>
+        <p className="muted">
+          The route guard checks AuthInGo session state. No session means this
+          login screen is shown instead of private content.
+        </p>
+
+        <form className="login-form" onSubmit={handleSubmit}>
+          <label className="field">
+            <span>Email</span>
+            <div className="field-control">
+              <AtSign className="field-icon" size={18} />
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+          </label>
+
+          <label className="field">
+            <span>Password</span>
+            <div className="field-control">
+              <KeyRound className="field-icon" size={18} />
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+          </label>
+
+          {authError || sessionError ? (
+            <p className="error">{authError ?? sessionError}</p>
+          ) : null}
+
+          <button className="primary-button" type="submit" disabled={isLoading}>
+            <span>{isLoading ? "Creating session" : "Continue to private route"}</span>
+            <ArrowRight size={16} />
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}`,
+  },
+  "/app/private-dashboard.tsx": {
+    code: `"use client";
+
+import { Database, LogOut, ShieldCheck } from "lucide-react";
+import { useAuth } from "@authingo/react";
+
+export function PrivateDashboard() {
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <section className="route-card">
+      <div className="panel-band">
+        <span>private</span>
+        <span>/dashboard</span>
+      </div>
+
+      <div className="panel-body">
+        <p className="eyebrow">Access Granted</p>
+        <h1>Private dashboard</h1>
+        <p className="muted">
+          This screen only renders after AuthInGo confirms a valid
+          database-backed session.
+        </p>
+
+        <div className="secure-list">
+          <div className="secure-row">
+            <ShieldCheck size={18} />
+            <div>
+              <strong>Authenticated user</strong>
+              <span>{user.email}</span>
+            </div>
+          </div>
+          <div className="secure-row">
+            <Database size={18} />
+            <div>
+              <strong>Session source</strong>
+              <span>Verified by the backend session endpoint</span>
+            </div>
+          </div>
+        </div>
+
+        <button className="secondary-button" type="button" onClick={() => logout()}>
+          <LogOut size={16} />
+          Sign out and lock route
+        </button>
+      </div>
+    </section>
+  );
+}`,
+  },
+  "/App.tsx": {
+    code: `import { useState } from "react";
+import { Home, LockKeyhole } from "lucide-react";
+import { Providers } from "./app/providers";
+import { ProtectedRoute } from "./app/protected-route";
+import { Login } from "./app/login";
+import { PrivateDashboard } from "./app/private-dashboard";
+import "./styles.css";
+
+type RouteName = "public" | "dashboard";
+
+function RouterDemo() {
+  const [route, setRoute] = useState<RouteName>("public");
+
+  return (
+    <main className="page-shell">
+      <section className="browser-shell">
+        <nav className="route-tabs">
+          <button
+            type="button"
+            className={route === "public" ? "active" : ""}
+            onClick={() => setRoute("public")}
+          >
+            <Home size={16} />
+            Public
+          </button>
+          <button
+            type="button"
+            className={route === "dashboard" ? "active" : ""}
+            onClick={() => setRoute("dashboard")}
+          >
+            <LockKeyhole size={16} />
+            Private
+          </button>
+        </nav>
+
+        {route === "public" ? (
+          <section className="route-card">
+            <div className="panel-band">
+              <span>public</span>
+              <span>/</span>
+            </div>
+            <div className="panel-body">
+              <p className="eyebrow">Public Route</p>
+              <h1>Anyone can read this page.</h1>
+              <p className="muted">
+                Click the private tab to hit a protected route. Without a
+                session, the guard shows the login screen instead.
+              </p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => setRoute("dashboard")}
+              >
+                <span>Open private route</span>
+              </button>
+            </div>
+          </section>
+        ) : (
+          <ProtectedRoute
+            fallback={
+              <Login
+                redirectFrom="/dashboard"
+                onSuccess={() => setRoute("dashboard")}
+              />
+            }
+          >
+            <PrivateDashboard />
+          </ProtectedRoute>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default function App() {
+  return (
+    <Providers>
+      <RouterDemo />
+    </Providers>
+  );
+}`,
+  },
+  "/styles.css": {
+    hidden: true,
+    code: `@font-face {
+  font-family: "Geist Sans";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.7.0/dist/fonts/geist-sans/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: "Geist Pixel Square";
+  src: url("https://cdn.jsdelivr.net/npm/geist@1.7.0/dist/fonts/geist-pixel/GeistPixel-Square.woff2") format("woff2");
+  font-weight: 400;
+}
+
+:root {
+  --brand: #0763EE;
+  --brand-hover: #0752c6;
+  --bg: #0a0a0a;
+  --border: #262626;
+  --muted: #a3a3a3;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Geist Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+body {
+  background: var(--bg);
+  color: #ededed;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.page-shell {
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgba(38, 38, 38, 0.48) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(38, 38, 38, 0.48) 1px, transparent 1px),
+    var(--bg);
+  background-size: 40px 40px;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 28px;
+  position: relative;
+}
+
+.page-shell::before,
+.page-shell::after {
+  background-image: repeating-linear-gradient(
+    315deg,
+    rgba(115, 115, 115, 0.32) 0,
+    rgba(115, 115, 115, 0.32) 1px,
+    transparent 1px,
+    transparent 50%
+  );
+  background-size: 10px 10px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  content: "";
+  height: 100%;
+  position: fixed;
+  top: 0;
+  width: 38px;
+}
+
+.page-shell::before {
+  left: max(14px, calc(50% - 500px));
+}
+
+.page-shell::after {
+  right: max(14px, calc(50% - 500px));
+}
+
+.browser-shell {
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.44);
+  max-width: 620px;
+  position: relative;
+  width: min(100%, 620px);
+  z-index: 1;
+}
+
+.route-tabs {
+  background: #0a0a0a;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 48px;
+}
+
+.route-tabs button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--border);
+  color: #a3a3a3;
+  cursor: pointer;
+  display: flex;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 13px;
+  gap: 8px;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s;
+}
+
+.route-tabs button:last-child {
+  border-right: 0;
+}
+
+.route-tabs button:hover,
+.route-tabs button.active {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.route-card {
+  background: rgba(10, 10, 10, 0.96);
+  min-height: 430px;
+}
+
+.route-card.compact {
+  align-items: center;
+  color: var(--brand);
+  display: flex;
+  gap: 16px;
+  min-height: 240px;
+  padding: 34px;
+}
+
+.panel-band {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  height: 44px;
+  justify-content: space-between;
+}
+
+.panel-band span {
+  align-items: center;
+  border-right: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 12px;
+  height: 100%;
+  padding: 0 18px;
+}
+
+.panel-band span:last-child {
+  border-left: 1px solid var(--border);
+  border-right: 0;
+  color: var(--brand);
+}
+
+.panel-body {
+  padding: 34px;
+}
+
+.eyebrow {
+  color: var(--brand);
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+h1 {
+  color: #ffffff;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1.05;
+  margin: 0 0 14px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 460px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: #d4d4d4;
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.field-control {
+  align-items: center;
+  background: #050505;
+  border: 1px solid var(--border);
+  display: flex;
+  min-height: 48px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.field-control:focus-within {
+  border-color: rgba(7, 99, 238, 0.76);
+  box-shadow: 0 0 0 1px rgba(7, 99, 238, 0.28);
+}
+
+.field-icon {
+  color: #737373;
+  flex: 0 0 auto;
+  margin-left: 15px;
+}
+
+.field-control:focus-within .field-icon {
+  color: var(--brand);
+}
+
+input {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  flex: 1;
+  font-size: 14px;
+  height: 48px;
+  min-width: 0;
+  outline: none;
+  padding: 0 14px 0 12px;
+}
+
+.primary-button,
+.secondary-button {
+  align-items: center;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  font-family: "Geist Pixel Square", ui-monospace, monospace;
+  font-size: 14px;
+  gap: 10px;
+  justify-content: center;
+  min-height: 48px;
+  transition: background 0.18s, box-shadow 0.18s, color 0.18s, transform 0.18s;
+}
+
+.primary-button {
+  background: var(--brand);
+  color: #ffffff;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: var(--brand-hover);
+  box-shadow: 0 0 28px rgba(7, 99, 238, 0.36);
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.66;
+}
+
+.secondary-button {
+  background: #ffffff;
+  color: var(--bg);
+  margin-top: 24px;
+  width: 100%;
+}
+
+.secondary-button:hover {
+  background: var(--brand);
+  color: #ffffff;
+  box-shadow: 0 0 28px rgba(7, 99, 238, 0.32);
+}
+
+.secure-list {
+  border: 1px solid var(--border);
+  margin-top: 28px;
+}
+
+.secure-row {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto 1fr;
+  padding: 16px;
+}
+
+.secure-row:last-child {
+  border-bottom: 0;
+}
+
+.secure-row svg {
+  color: var(--brand);
+  margin-top: 2px;
+}
+
+.secure-row strong {
+  color: #ededed;
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.secure-row span {
+  color: #8b8b8b;
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+@media (max-width: 560px) {
+  .page-shell {
+    padding: 18px;
+  }
+
+  .page-shell::before,
+  .page-shell::after {
+    display: none;
+  }
+
+  .panel-body {
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+}`,
+  },
+};
 
 export const playgrounds: PlaygroundConfig[] = [
   {
@@ -739,7 +1800,19 @@ export const playgrounds: PlaygroundConfig[] = [
     },
     sandpackConfig: {
       template: "react-ts",
-      files: placeholderFiles("Custom Login UI"),
+      files: customUIFiles,
+      activeFile: "/app/custom-login.tsx",
+      visibleFiles: [
+        "/lib/auth-client.ts",
+        "/app/providers.tsx",
+        "/app/custom-login.tsx",
+      ],
+      customSetup: {
+        dependencies: {
+          "@authingo/react": "latest",
+          "lucide-react": "latest",
+        },
+      },
     },
   },
   {
@@ -754,7 +1827,22 @@ export const playgrounds: PlaygroundConfig[] = [
     },
     sandpackConfig: {
       template: "react-ts",
-      files: placeholderFiles("Protected Routes"),
+      files: protectedRoutesFiles,
+      activeFile: "/app/protected-route.tsx",
+      visibleFiles: [
+        "/lib/auth-client.ts",
+        "/app/providers.tsx",
+        "/app/protected-route.tsx",
+        "/app/login.tsx",
+        "/app/private-dashboard.tsx",
+        "/App.tsx",
+      ],
+      customSetup: {
+        dependencies: {
+          "@authingo/react": "latest",
+          "lucide-react": "latest",
+        },
+      },
     },
   },
 ];
