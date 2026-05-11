@@ -19,6 +19,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.8,
     },
+    {
+      url: absoluteUrl("/changelog"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    },
     ...playgrounds.map((playground) => ({
       url: absoluteUrl(`/playground/${playground.id}`),
       lastModified: now,
@@ -33,5 +39,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
   ];
 
-  return Array.from(new Map(routes.map((route) => [route.url, route])).values());
+  return Array.from(
+    new Map(routes.map((route) => [route.url, route])).values(),
+  );
 }

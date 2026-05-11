@@ -1,11 +1,10 @@
 "use client";
 
-import { GithubLogoIcon, List, X } from "@phosphor-icons/react";
+import { GithubLogoIcon, List } from "@phosphor-icons/react";
 import { ThemeSwitch } from "fumadocs-ui/layouts/shared/slots/theme-switch";
 import Image from "next/image";
 import Link from "next/link";
 import type React from "react";
-import { useState } from "react";
 import authingoLogo from "@/assets/logo/authingo-blue.svg";
 import { cn } from "@/lib/cn";
 
@@ -21,7 +20,6 @@ export default function Navbar({
   sidebarTrigger: SidebarTrigger,
   layout = "home",
 }: NavbarProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isDocsLayout = layout === "docs";
 
   const handleGithubClick = () => {
@@ -82,6 +80,12 @@ export default function Navbar({
             >
               Playground
             </Link>
+            <Link
+              href="/changelog"
+              className="transition hover:text-fd-primary whitespace-nowrap"
+            >
+              Changelog
+            </Link>
           </nav>
         </div>
 
@@ -103,48 +107,8 @@ export default function Navbar({
               </SidebarTrigger>
             </>
           )}
-          {/* Only show mobile menu button for home layout */}
-          {!isDocsLayout && (
-            <button
-              type="button"
-              className="sm:hidden text-fd-foreground p-1 shrink-0"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            >
-              {isMenuOpen ? <X size={20} /> : <List size={20} />}
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Mobile Menu (only for home layout) */}
-      {!isDocsLayout && isMenuOpen && (
-        <div className="relative sm:hidden bg-fd-background border-b border-fd-border py-4 px-3 xs:px-4 flex flex-col gap-4 shadow-lg">
-          <Link
-            href="/docs"
-            className="text-base font-semibold text-fd-foreground hover:text-fd-primary transition"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Docs
-          </Link>
-          <Link
-            href="/playground"
-            className="text-base font-semibold text-fd-foreground hover:text-fd-primary transition"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Playground
-          </Link>
-          <button
-            type="button"
-            className="text-left text-base font-semibold text-fd-foreground hover:text-fd-primary transition cursor-pointer"
-            onClick={() => {
-              handleGithubClick();
-              setIsMenuOpen(false);
-            }}
-          >
-            GitHub
-          </button>
-        </div>
-      )}
     </header>
   );
 }
