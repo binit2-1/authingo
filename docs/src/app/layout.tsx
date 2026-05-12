@@ -14,6 +14,7 @@ import {
   twitterCreator,
   twitterSite,
 } from "@/lib/seo";
+import Script from "next/dist/client/script";
 
 type Props = { children: React.ReactNode };
 
@@ -91,6 +92,11 @@ export default function Layout({ children }: Props) {
       suppressHydrationWarning
     >
       <body className="flex flex-col min-h-screen">
+        <Script
+          src="https://cloud.umami.is/script.js"
+          data-website-id="6d4cb90f-54af-4171-ae1b-9f71832d47be"
+          strategy="afterInteractive"
+        />
         <RootProvider>{children}</RootProvider>
       </body>
     </html>
