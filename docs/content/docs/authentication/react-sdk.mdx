@@ -118,78 +118,71 @@ The exported `useSession()` hook returns `{ data, isPending, error, refetch }`.
 The provider and client hooks both listen for cross-tab logout messages so
 another open tab clears its local auth state immediately.
 
-## Sign in form
+## Sign in with email
 
-```tsx title="app/login.tsx"
+Create a small client-side function for your login flow, then call it from your
+form `onSubmit` handler or button click handler after reading the email and
+password values.
+
+```tsx title="lib/use-sign-in.ts"
 "use client";
 
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@authingo/react";
 
-export function Login() {
-  const { user, isLoading, error, checkSession, logout } = useAuth();
+type SignInInput = {
+  email: string;
+  password: string;
+};
 
-  if (isLoading) return <div>Loading...</div>;
+export function useSignInWithEmail() {
+  const { checkSession } = useAuth();
 
-  if (user) {
-    return (
-      <div>
-        <p>Welcome, {user.email}</p>
-        <button onClick={() => logout()}>Sign out</button>
-      </div>
-    );
-  }
+  return async function signInWithEmail(input: SignInInput) {
+    const result = await authClient.signIn.email(input);
 
-  return (
-    <div>
-      {error ? <p>{error}</p> : null}
-      <button
-        onClick={async () => {
-          const result = await authClient.signIn.email({
-            email: "test@example.com",
-            password: "password",
-          });
+    if (!result.error) {
+      await checkSession();
+    }
 
-          if (!result.error) {
-            await checkSession();
-          }
-        }}
-      >
-        Sign in
-      </button>
-    </div>
-  );
+    return result;
+  };
 }
 ```
 
-## Sign up form
+Use `useSignInWithEmail()` inside a client component rendered under
+`AuthProvider`. Call the returned `signInWithEmail` function from your login
+form's submit handler.
 
-```tsx title="app/sign-up.tsx"
+## Sign up with email
+
+Use the same pattern for account creation, then refresh the provider session
+after a successful sign up.
+
+```tsx title="lib/use-sign-up.ts"
 "use client";
 
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@authingo/react";
 
-export function SignUp() {
+type SignUpInput = {
+  email: string;
+  password: string;
+  name: string;
+};
+
+export function useSignUpWithEmail() {
   const { checkSession } = useAuth();
 
-  return (
-    <button
-      onClick={async () => {
-        const result = await authClient.signUp.email({
-          email: "ada@example.com",
-          password: "correct-horse-battery-staple",
-          name: "Ada Lovelace",
-        });
+  return async function signUpWithEmail(input: SignUpInput) {
+    const result = await authClient.signUp.email(input);
 
-        if (!result.error) {
-          await checkSession();
-        }
-      }}
-    >
-      Create account
-    </button>
-  );
+    if (!result.error) {
+      await checkSession();
+    }
+
+    return result;
+  };
 }
 ```
 
