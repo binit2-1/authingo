@@ -92,27 +92,8 @@ const { user, isLoading, error, checkSession, logout } = useAuth();
 
 ## createAuthClient
 
-Use `createAuthClient` to call sign in, sign up, and sign out routes.
-
-```tsx title="lib/auth-client.ts"
-import { createAuthClient } from "@authingo/react";
-
-export const authClient = createAuthClient({
-  baseURL: "http://localhost:8080/api/auth",
-});
-```
-
-The client exposes:
-
-| Method | Calls | Input |
-| --- | --- | --- |
-| `authClient.signIn.email()` | `POST /sign-in` | `{ email, password }` |
-| `authClient.signUp.email()` | `POST /sign-up` | `{ email, password, name }` |
-| `authClient.signOut()` | `POST /sign-out` | none |
-| `authClient.useSession()` | `GET /session` | none |
-
-`useSession()` is a client-side convenience hook for apps that prefer a
-single client module:
+Use `createAuthClient` once in a shared client module, then import that client
+from your forms and other client components.
 
 ```tsx title="lib/auth-client.ts"
 import { createAuthClient } from "@authingo/react";
@@ -124,20 +105,26 @@ export const authClient = createAuthClient({
 export const { signIn, signUp, signOut, useSession } = authClient;
 ```
 
-The hook returns `{ data, isPending, error, refetch }`. The provider and client
-hooks both listen for cross-tab logout messages so another open tab clears its
-local auth state immediately.
+The client exposes:
+
+| Method | Calls | Input |
+| --- | --- | --- |
+| `authClient.signIn.email()` | `POST /sign-in` | `{ email, password }` |
+| `authClient.signUp.email()` | `POST /sign-up` | `{ email, password, name }` |
+| `authClient.signOut()` | `POST /sign-out` | none |
+| `authClient.useSession()` | `GET /session` | none |
+
+The exported `useSession()` hook returns `{ data, isPending, error, refetch }`.
+The provider and client hooks both listen for cross-tab logout messages so
+another open tab clears its local auth state immediately.
 
 ## Sign in form
 
 ```tsx title="app/login.tsx"
 "use client";
 
-import { createAuthClient, useAuth } from "@authingo/react";
-
-const authClient = createAuthClient({
-  baseURL: "http://localhost:8080/api/auth",
-});
+import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@authingo/react";
 
 export function Login() {
   const { user, isLoading, error, checkSession, logout } = useAuth();
@@ -180,11 +167,8 @@ export function Login() {
 ```tsx title="app/sign-up.tsx"
 "use client";
 
-import { createAuthClient, useAuth } from "@authingo/react";
-
-const authClient = createAuthClient({
-  baseURL: "http://localhost:8080/api/auth",
-});
+import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@authingo/react";
 
 export function SignUp() {
   const { checkSession } = useAuth();

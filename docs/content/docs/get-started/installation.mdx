@@ -23,6 +23,7 @@ Create or open a Go module, then install the core package and the PostgreSQL ada
 go get github.com/binit2-1/authingo
 go get github.com/binit2-1/authingo/adapters/postgres
 go get github.com/jackc/pgx/v5/stdlib
+go get github.com/joho/godotenv
 ```
 
 </Step>
@@ -32,8 +33,8 @@ go get github.com/jackc/pgx/v5/stdlib
 ### Prepare the database tables
 
 The PostgreSQL adapter ships an idempotent schema helper. For local development
-and small demos, call `postgres.ApplySchema(ctx, db)` after opening your database
-connection in the server code below.
+and small demos, call `postgres.ApplySchema(ctx, db)` after opening your
+database connection.
 
 For production applications, put the same schema into your normal migration
 tool. The full SQL lives in `adapters/postgres/schema.sql`.
@@ -60,9 +61,12 @@ import (
 	"github.com/binit2-1/authingo"
 	"github.com/binit2-1/authingo/adapters/postgres"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
+
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
@@ -71,7 +75,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := postgres.ApplySchema(ctx, db); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		log.Fatal(err)
 	}
 
